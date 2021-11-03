@@ -8,3 +8,6 @@ attacks/gan/__pycache__
 
 */__pycache__
 */**/__pycache__
+
+gan/*
+trained_ae/*
