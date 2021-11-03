@@ -44,6 +44,5 @@ def load_data(dataset_name, mode='train', batch_size=64):
     if dataset_name == 'lfw':
         data_loader = load_lfw(batch_size)
         
-
     return data_loader
 

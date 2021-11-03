@@ -1,3 +1,4 @@
+### from https://github.com/qizhangli/nobox-attacks
 
 import functools
 
@@ -46,12 +47,19 @@ class ResnetBlock(nn.Module):
         out = x + self.conv_block(x)  # add skip connections
         return out
 
-
-
 class autoencoder(nn.Module):
 
-    def __init__(self, input_nc, output_nc, ngf=64, norm_layer=nn.BatchNorm2d, use_dropout=False,
-                 n_blocks=6, padding_type='reflect', decoder_num = 2, decoder_out_ind = 100):
+    def __init__(self, 
+        input_nc, 
+        output_nc, 
+        ngf=64, 
+        norm_layer=nn.BatchNorm2d, 
+        use_dropout=False,
+        n_blocks=6, 
+        padding_type='reflect', 
+        decoder_num = 2, 
+        decoder_out_ind = 100
+    ):
         super(autoencoder, self).__init__()
         assert(n_blocks >= 0)
         if type(norm_layer) == functools.partial:
