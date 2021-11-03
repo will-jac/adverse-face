@@ -18,19 +18,6 @@ import torchvision.transforms as T
 
 from model_autoencoder import *
 from utils import *
-from prep_dataset import OUR_dataset
-
-def create_argparse():
-    parser = argparse.ArgumentParser(description='Train')
-    parser.add_argument('--n_imgs', type=int, default=20, help='number of all reference images')
-    parser.add_argument('--n_iters', type=int, default=15000)
-    parser.add_argument('--n_decoders', type=int, default=20)
-    parser.add_argument('--lr', type=float, default=0.001)
-    parser.add_argument('--mode', type=str, default='prototypical')
-    parser.add_argument('--save_dir', type=str, default='./trained_ae')
-    parser.add_argument('--start', type=int, default=0)
-    parser.add_argument('--end', type=int, default=250)
-    return parser
 
 def initialize_model(device, decoder_num):
     model = autoencoder(input_nc=3, output_nc=3, n_blocks=3, decoder_num=decoder_num)
@@ -97,14 +84,15 @@ def train_unsup(
 
 
 def main(
+    data_loader,
     n_imgs=20, # number of all reference images
     n_iters=15000, 
     n_decoders=20,
     lr=0.001, 
     mode='prototypical', 
     save_dir='./trained_ae', 
-    data_dir = 'data/ILSVRC2012_img_val', 
-    data_csv_dir = 'data/selected_data.csv',
+    # data_dir = 'data/ILSVRC2012_img_val', 
+    # data_csv_dir = 'data/selected_data.csv',
     start_idx = 0,
     end_idx = 250,
     seed=0
@@ -131,22 +119,6 @@ def main(
 
     batch_size = n_imgs*2
     do_aug = True
-    data_root = './'
-
-    # init dataset and data loader
-    trans = T.Compose([
-        T.Resize((256,256)),
-        T.CenterCrop(224),
-        T.ToTensor()
-    ])
-
-    dataset = OUR_dataset(data_dir = data_dir,
-                          data_csv_dir = data_csv_dir,
-                          mode='train',
-                          img_num = n_imgs,
-                          transform = trans)
-
-    data_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers = 1)
 
     if mode == 'prototypical':
         prototype_ind_csv = open(save_dir+'/prototype_ind.csv', 'a')
@@ -173,12 +145,28 @@ def main(
         model.eval()
         torch.save(model.state_dict(), save_dir + '/models/{}.pth'.format(iter_ind))
 
+
 if __name__ == '__main__':
-    parser = create_argparse()
+
+    parser = argparse.ArgumentParser(description='Train')
+    parser.add_argument('--n_imgs', type=int, default=20, help='number of all reference images')
+    parser.add_argument('--n_iters', type=int, default=15000)
+    parser.add_argument('--n_decoders', type=int, default=20)
+    parser.add_argument('--lr', type=float, default=0.001)
+    parser.add_argument('--mode', type=str, default='prototypical')
+    parser.add_argument('--save_dir', type=str, default='./trained_ae')
+    parser.add_argument('--start', type=int, default=0)
+    parser.add_argument('--end', type=int, default=250)
+
     args = parser.parse_args()
     print(args)
 
+    from data.datasets import load_data
+
+    data_loader = load_data('LFW', 'train', args.n_imgs)
+  
     main(
+        data_loader,
         args.n_imgs, args.n_iters, args.n_decoders, args.lr, args.mode, 
         args.save_dir,
         start_idx = args.start, end_idx = args.end

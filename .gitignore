@@ -1,1 +1,10 @@
 data/lfw/*
+data/lfw.tgz
+data/lfw-py
+__pycache__
+data/__pycache__
+attacks/__pycache__
+attacks/gan/__pycache__
+
+*/__pycache__
+*/**/__pycache__

@@ -15,13 +15,16 @@ Required libraries:
 - torch
 - torchvision
 - pillow (PIL)
+- sklearn
 
 Install all with one line:
-`pip install numpy tensorflow torch torchvision deepface pillow`
+`pip install numpy tensorflow torch torchvision deepface pillow sklearn`
 
 Required datasets:
 
-[] TODO
+- Labeled Faces in the Wild (LFW)
+
+This is downloaded by torch into the data directory of this project upon running - see test_data_loader.ipynb
 
 ## Usage
 

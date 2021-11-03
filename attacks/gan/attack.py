@@ -21,8 +21,6 @@ import torchvision.transforms as T
 from model_autoencoder import *
 from utils import *
 
-from prep_dataset import OUR_dataset
-
 def create_argparse():
     parser = argparse.ArgumentParser(description='Attack')
     parser.add_argument('--epsilon', type=float, default=0.1)
