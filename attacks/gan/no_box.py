@@ -47,7 +47,6 @@ def initialize_model(decoder_num, device):
     model.to(device)
     return model
 
-
 ## TRAIN
 def naive():
     pass
@@ -178,10 +177,11 @@ def attack_loop(
     n_decoders, model_dir,
     ce_niters, ce_epsilon, ce_alpha, ce_method,
     ila_niters, ila_epsilon,
-    dataloader, batch_size,
+    data_loader, batch_size,
+    img_save_dir,
     start_idx, end_idx
 ):
-    for data_ind, (original_img, _) in enumerate(dataloader):
+    for data_ind, (original_img, _) in enumerate(data_loader):
         if not start_idx <= data_ind < end_idx:
             continue
         model = initialize_model(n_decoders)
@@ -201,12 +201,13 @@ def attack_loop(
             ila_niters, eps=ila_epsilon
         )
         # TODO: save the image
-        # for save_ind in range(batch_size):
-        #     file_path, file_name = dataset.imgs[data_ind * 2*n_imgs + save_ind][0].split('/')[-2:]
-        #     os.makedirs(save_dir + '/' + file_path, exist_ok=True)
-        #     save_attack_img(img=att_img[save_ind],
-        #                     file_dir=os.path.join(save_dir, file_path, file_name[:-5]) + '.png')
-        #     print('\r', data_ind * batch_size + save_ind, 'images saved.', end=' ')
+        for save_ind in range(batch_size):
+            # file_path, file_name = dataset.imgs[data_ind * 2*n_imgs + save_ind][0].split('/')[-2:]
+            file_path, file_name = data_loader.dataset.data[data_ind * batch_size + save_ind][0].split('/')[-2:]
+            os.makedirs(img_save_dir + '/' + file_path, exist_ok=True)
+            save_attack_img(img=att_img[save_ind],
+                            file_dir=os.path.join(img_save_dir, file_path, file_name[:-5]) + '.png')
+            print('\r', data_ind * batch_size + save_ind, 'images saved.', end=' ')
 
 def main(
     data_loader,
@@ -216,14 +217,14 @@ def main(
     n_decoders=20,
     lr=0.001, 
     train_mode='jigsaw', 
-    model_save_dir='./gan/trained_ae', 
+    model_save_dir='./attacks/gan/trained_ae', 
     ce_epsilon=0.3,
     ce_niters=200,
     ce_alpha=1.0,
     ce_method='ifgsm',
     ila_epsilon=0.1,
     ila_niters=100,
-    img_save_dir='./adv_images',
+    img_save_dir='./attacks/gan/adv_images',
     start_idx = 0,
     end_idx=2500,
     seed=0
@@ -239,7 +240,11 @@ def main(
     else:
         device = torch.device('cpu')
 
-    model_save_dir = '%s/%s_%s_%s_%s/'%(model_save_dir,train_mode,n_iters,n_decoders,lr)
+    model_save_dir = '%s/batch_%s_decoders_%s/%s_%s_%s/'%(
+        model_save_dir,
+        batch_size, n_decoders,
+        train_mode, n_iters, lr
+    )
 
     if train:
         # prototypical not supported for FR
@@ -261,6 +266,7 @@ def main(
             ce_niters, ce_epsilon, ce_alpha, ce_method,
             ila_niters, ila_epsilon,
             data_loader, batch_size,
+            img_save_dir,
             start_idx, end_idx
         )
 

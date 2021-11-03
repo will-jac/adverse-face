@@ -5,6 +5,8 @@ __pycache__
 data/__pycache__
 attacks/__pycache__
 attacks/gan/__pycache__
+attacks/gan/trained_ae/*
+attacks/gan/saved_images/*
 
 */__pycache__
 */**/__pycache__

@@ -25,7 +25,19 @@ Required datasets:
 
 This is downloaded by torch into the data directory of this project upon running - see test_data_loader.ipynb
 
-## Usage
+## Develoment
+
+0. Clone the repository: `git clone https://github.com/will-jac/adverse-face`
+1. Create a branch: `git branch image-distance`
+2. Check out the branch: `git checkout image-distance`
+3. Make changes, then add and commit them: `git add file; git commit -m "useful message"`
+4. When you're ready, push to github: `git push`
+5. When you're done making changes, merge them into main:
+```{bash}
+git checkout main
+git merge main
+```
+This may require manual review. Always check that it is working before pushing, and always push everything to remote before merging.
 
 ## Plans
 

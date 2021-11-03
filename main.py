@@ -20,7 +20,8 @@ data_loader = load_data('lfw', 'train', batch_size)
 no_box(
     data_loader, batch_size,
     train_model,
-    n_iters, n_decoders, lr, train_mode
+    n_iters, n_decoders, lr, train_mode,
+    start_idx=start_idx, end_idx=end_idx
 )
 
 
