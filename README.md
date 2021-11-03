@@ -14,11 +14,10 @@ Required libraries:
 - tensorflow 
 - torch
 - torchvision
-- pillow (PIL)
 - sklearn
 
 Install all with one line:
-`pip install numpy tensorflow torch torchvision deepface pillow sklearn`
+`pip install numpy tensorflow torch torchvision deepface sklearn`
 
 Required datasets:
 
