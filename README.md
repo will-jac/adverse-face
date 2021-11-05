@@ -39,10 +39,34 @@ git merge main
 ```
 This may require manual review. Always check that it is working before pushing, and always push everything to remote before merging.
 
+## Attacks
+
+### No-Box
+
+Idea: train a surrogate auto-encoder model on unsupervised image reconstruction. Then, attack the surrogate model. Any attack that works well on the surrogate will probably work well on an actual FR system.
+
+Code: see attacks/gan/no_box.py
+
+Surrogate model: Currently using ResNet, but should probably switch to VGG Face. Just haven't had the time to code it up, as the only one released by the paper was ResNet.
+Saved under attacks/gan/trained_ae
+
+Attack Images: Saved under attacks/gan/trained_ae
+
+### Obfuscated Gradients
+
+TODO (Jack)
+
+## Evaluated FR systems
+
+TODO
+
 ## Plans
 
-[] Get datasets (shell script?)
+[x] Get datasets (using [LFW](http://vis-www.cs.umass.edu/lfw/))
 [] Create and train working FR model 
-[] Create and train (if necessary) working attack(s)
+[-] Create working attack
+[x] Working no-box attack with ResNet surrogate model
+[] Code a VGG surrogate model 
+[] Obfuscated Gradient attacks
 [] ???
 [] Profit
