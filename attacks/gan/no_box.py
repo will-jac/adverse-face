@@ -97,8 +97,8 @@ def train_loop(
             continue
 
         model_name = save_dir.split('/')[-2:]
-
-        if os.path.exists(save_dir + '/models/{}.pth'.format(iter_ind)):
+        model_save_dir = os.path.join(save_dir, 'models', '{}.pth'.format(iter_ind))
+        if os.path.exists(model_save_dir):
             print('Model [{} {}] [{}] already trained, not re-running'.format(
                 model_name[0], model_name[1], iter_ind
             ))
@@ -115,7 +115,7 @@ def train_loop(
         train_unsup(model, optimizer, permute, iter_ind, img, n_iters)
 
         model.eval()
-        torch.save(model.state_dict(), save_dir + '/models/{}.pth'.format(iter_ind))
+        torch.save(model.state_dict(), model_save_dir)
 
 ## ATTACK
 def attack_ila(model, device, ori_img, tar_img, attack_niters, eps):
@@ -143,17 +143,18 @@ def attack_ila(model, device, ori_img, tar_img, attack_niters, eps):
 def attack_ce_unsup(
     model, device, 
     ori_img, 
-    attack_niters, eps, alpha, batch_size, ce_method
+    attack_niters, eps, alpha, 
+    batch_size, n_imgs_per_person,
+    ce_method
 ):
-    n_imgs = batch_size // 2
     model.eval()
     ori_img = ori_img.to(device)
     nChannels = 3
     tar_img = []
-    for i in range(n_imgs):
-        tar_img.append(ori_img[[i, n_imgs + i]])
-    for i in range(n_imgs):
-        tar_img.append(ori_img[[n_imgs+i, i]])
+    for i in range(n_imgs_per_person):
+        tar_img.append(ori_img[[i, n_imgs_per_person + i]])
+    for i in range(n_imgs_per_person):
+        tar_img.append(ori_img[[n_imgs_per_person+i, i]])
     tar_img = torch.cat(tar_img, dim=0)
     tar_img = tar_img.reshape(batch_size,2,nChannels,224,224)
     img = ori_img.clone()
@@ -189,7 +190,7 @@ def attack_loop(
     n_decoders,
     ce_niters, ce_epsilon, ce_alpha, ce_method,
     ila_niters, ila_epsilon,
-    data_loader, batch_size,
+    data_loader, batch_size, n_imgs_per_person,
     save_dir,
     start_idx, end_idx
 ):
@@ -198,7 +199,7 @@ def attack_loop(
             continue
         print('loading model', save_dir.split('/')[-2], data_ind)
         model = initialize_model(n_decoders, device)
-        model.load_state_dict(torch.load('{}/models/{}.pth'.format(save_dir, data_ind)))
+        model.load_state_dict(torch.load(os.path.join(save_dir, 'models', '{}.pth'.format(data_ind))))
         
         model.eval()
         original_img = original_img.to(device)
@@ -206,7 +207,8 @@ def attack_loop(
         old_att_img = attack_ce_unsup(
             model, device, original_img, 
             attack_niters = ce_niters,
-            eps = ce_epsilon, alpha=ce_alpha, batch_size=batch_size,
+            eps = ce_epsilon, alpha=ce_alpha, 
+            batch_size=batch_size, n_imgs_per_person = n_imgs_per_person,
             ce_method=ce_method
         )
 
@@ -274,12 +276,15 @@ def main(
     )
 
     assert batch_size % 2 == 0, 'Batch size must be even'
+    n_imgs_per_person = batch_size // 2
+    assert n_decoders <= n_imgs_per_person**2, 'Too many decoders'
+    # probably should only have one decoder..
 
     if train:
         # prototypical not supported for FR
         assert train_mode in ['unsup_naive', 'jigsaw', 'rotate']
     
-        os.makedirs(save_dir + '/models/', exist_ok=True)
+        os.makedirs(os.path.join(save_dir, 'models'), exist_ok=True)
 
         train_loop(
             device, 
