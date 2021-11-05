@@ -39,11 +39,19 @@ git merge main
 ```
 This may require manual review. Always check that it is working before pushing, and always push everything to remote before merging.
 
-Right now, the main.py file is just training & attacking with the no-box attack. This can be changed.
+Notes:
 
-Likely what will be best is to have a python file in the base dir of the project for generating each attack, and one for evaling each attack.
+`main.py`
 
-TODO: Do this after eval.py is created? Or control the two with params passed into main.py?
+- Right now, the main.py file is just training & attacking with the no-box attack. This can be changed.
+- Likely what will be best is to have a python file in the base dir of the project for generating each attack, and one for evaling each attack.
+- TODO: Do this after eval.py is created? Or control the two with params passed into main.py?
+
+`data/datasets/load_data.py`
+- loads the data. `batch_size` is the number of images. 
+- `batch_by_people` is a flag for no-box attacks - if True, each batch will contain `batch_size/2` images of one person, and `batch_size/2` of another person
+- `shuffle` will shuffle the dataset. If False, each batch will be deterministic
+
 
 ## Attacks
 
