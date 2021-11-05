@@ -2,6 +2,7 @@
 
 import functools
 
+import torch
 import torch.nn as nn
 
 class Normalize(nn.Module):
@@ -55,7 +56,7 @@ class ResnetBlock(nn.Module):
         out = x + self.conv_block(x)  # add skip connections
         return out
 
-class AutoEncoder(nn.Module):
+class NoBoxAutoEncoder(nn.Module):
 
     def __init__(self, 
         input_nc, 
@@ -66,32 +67,51 @@ class AutoEncoder(nn.Module):
         n_blocks=6, 
         padding_type='reflect', 
         decoder_num = 2, 
-        decoder_out_ind = 100
+        decoder_out_ind = 100,
+        encoder_type = 'resnet'
     ):
-        super(AutoEncoder, self).__init__()
+        super(NoBoxAutoEncoder, self).__init__()
         assert(n_blocks >= 0)
         if type(norm_layer) == functools.partial:
             use_bias = norm_layer.func == nn.InstanceNorm2d
         else:
             use_bias = norm_layer == nn.InstanceNorm2d
 
-        model = [nn.ReflectionPad2d(3),
-                 nn.Conv2d(input_nc, ngf, kernel_size=7, padding=0, bias=use_bias),
-                 norm_layer(ngf),
-                 nn.ReLU(True)]
-
         n_downsampling = 2
+
+        model = [
+            nn.ReflectionPad2d(3),
+            nn.Conv2d(input_nc, ngf, kernel_size=7, padding=0, bias=use_bias),
+            norm_layer(ngf),
+            nn.ReLU(True)
+        ]
+
         for i in range(n_downsampling):  # add downsampling layers
             mult = 2 ** i
-            model += [nn.Conv2d(ngf * mult, ngf * mult * 2, kernel_size=3, stride=2, padding=1, bias=use_bias),
-                      norm_layer(ngf * mult * 2),
-                      nn.ReLU(True)]
-
+            model += [
+                nn.Conv2d(
+                    ngf * mult, 
+                    ngf * mult * 2, 
+                    kernel_size=3, 
+                    stride=2, 
+                    padding=1, 
+                    bias=use_bias
+                ),
+                norm_layer(ngf * mult * 2),
+                nn.ReLU(True)
+            ]
         mult = 2 ** n_downsampling
+
         for i in range(n_blocks):       # add ResNet blocks
-
-            model += [ResnetBlock(ngf * mult, padding_type=padding_type, norm_layer=norm_layer, use_dropout=use_dropout, use_bias=use_bias)]
-
+            model += [
+                ResnetBlock(
+                    ngf * mult, 
+                    padding_type=padding_type,
+                    norm_layer=norm_layer, 
+                    use_dropout=use_dropout, 
+                    use_bias=use_bias
+                )
+            ]
 
         self.decoder_num = decoder_num
         self.encoder = nn.Sequential(*model)
@@ -101,7 +121,10 @@ class AutoEncoder(nn.Module):
         else:
             mk_decoder = self.mk_decoder
         for decoder_ind in range(decoder_num):
-            setattr(self, 'decoder_{}'.format(decoder_ind), mk_decoder(n_downsampling, norm_layer, ngf, use_bias, output_nc))
+            setattr(self, 
+                'decoder_{}'.format(decoder_ind), 
+                mk_decoder(n_downsampling, norm_layer, ngf, use_bias, output_nc)
+            )
     
     def mk_decoder(self, n_downsampling, norm_layer, ngf, use_bias, output_nc):
         model = []
@@ -118,12 +141,16 @@ class AutoEncoder(nn.Module):
         model = []
         for i in range(n_downsampling):  # add upsampling layers
             mult = 2 ** (n_downsampling - i)
-            model += [nn.ConvTranspose2d(ngf * mult, int(ngf * mult / 2),
-                                         kernel_size=3, stride=2,
-                                         padding=1, output_padding=1,
-                                         bias=use_bias),
-                      norm_layer(int(ngf * mult / 2)),
-                      nn.ReLU(True)]
+            model += [
+                nn.ConvTranspose2d(
+                    ngf * mult, int(ngf * mult / 2),
+                    kernel_size=3, stride=2,
+                    padding=1, output_padding=1,
+                    bias=use_bias
+                ),
+                norm_layer(int(ngf * mult / 2)),
+                nn.ReLU(True)
+            ]
         model += [nn.Conv2d(ngf, output_nc, kernel_size=3, padding=1)]
         model += [nn.Sigmoid()]
         model = nn.Sequential(*model)
@@ -139,7 +166,7 @@ class AutoEncoder(nn.Module):
     def forward(self, input):
         """Standard forward"""
         x = input
-        for ind, mm in enumerate(self.encoder):
+        for mm in self.encoder:
             x = mm(x)
         y = x.clone()
         outs = []
@@ -147,12 +174,16 @@ class AutoEncoder(nn.Module):
             outs.append(self.decoder_forw(x, decoder_ind))
         return outs, y
 
+model = torch.hub.load('pytorch/vision:v0.10.0', 'resnet50', pretrained=True)
 
-def load_auto_encoder(decoder_num=1):
-    model = AutoEncoder(
-            input_nc=3, output_nc=3, n_blocks=3, decoder_num=decoder_num
+def load_model(decoder_num=1, encoder_type='resnet'):
+    model = NoBoxAutoEncoder(
+            input_nc=3, output_nc=3, n_blocks=3, 
+            encoder_type=encoder_type, decoder_num=decoder_num
     )
     model = nn.Sequential(
         Normalize(),
         model,
     )
+    return model
+

@@ -63,13 +63,18 @@ Notes:
 
 Idea: train a surrogate auto-encoder model on unsupervised image reconstruction. Then, attack the surrogate model. Any attack that works well on the surrogate will probably work well on an actual FR system.
 
-Code: see attacks/gan/no_box.py
+Code: see attacks/no_box/no_box.py
 
 Surrogate model: Currently using Auto-Encoder based on ResNet.
-Can also use VGG and ResNet.
-Saved under attacks/gan
+Can also use VGG and pre-trained variants of both. Currently not working - will need to build special AE for this.
+Saved under attacks/no_box
 
-Attack Images: Saved under attacks/gan
+Attack Images: Saved under attacks/no_box
+
+TODO:
+
+[] create VGG and ResNet pre-trained auto-encoders
+[] get the prototypical attack working
 
 ### Obfuscated Gradients
 
