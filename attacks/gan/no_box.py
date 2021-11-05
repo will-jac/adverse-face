@@ -1,9 +1,7 @@
 ### from https://github.com/qizhangli/nobox-attacks
 
 import os
-import sys
 import time
-import csv
 import argparse
 
 import numpy as np
@@ -11,16 +9,17 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.backends import cudnn
-import torch.nn.functional as F
 
 from attacks.gan.model_autoencoder import *
 from attacks.gan.utils import *
 
 import torchvision
+import torchvision.transforms as T
 
 def save_attack_img(img_tensor, file_path):
     # T.ToPILImage()(img.data.cpu()).save(file_dir)
-    torchvision.utils.save_image(img_tensor, file_path)
+    # print('saving to path:', file_path)
+    torchvision.utils.save_image(img_tensor, file_path)#file_path)
 
 class ILA(torch.nn.Module):
     def __init__(self):
@@ -96,6 +95,18 @@ def train_loop(
     for iter_ind, (img, _) in enumerate(data_loader):
         if not start_idx <= iter_ind < end_idx:
             continue
+
+        model_name = save_dir.split('/')[-2:]
+
+        if os.path.exists(save_dir + '/models/{}.pth'.format(iter_ind)):
+            print('Model [{} {}] [{}] already trained, not re-running'.format(
+                model_name[0], model_name[1], iter_ind
+            ))
+            continue
+        print('Training model [{} {}] [{}]'.format(
+            model_name[0], model_name[1], iter_ind
+        ))
+
         model = initialize_model(n_decoders, device)
         model.train()
         optimizer = torch.optim.Adam(model.parameters(), lr=lr)
@@ -132,8 +143,9 @@ def attack_ila(model, device, ori_img, tar_img, attack_niters, eps):
 def attack_ce_unsup(
     model, device, 
     ori_img, 
-    attack_niters, eps, alpha, n_imgs, ce_method
+    attack_niters, eps, alpha, batch_size, ce_method
 ):
+    n_imgs = batch_size // 2
     model.eval()
     ori_img = ori_img.to(device)
     nChannels = 3
@@ -143,7 +155,7 @@ def attack_ce_unsup(
     for i in range(n_imgs):
         tar_img.append(ori_img[[n_imgs+i, i]])
     tar_img = torch.cat(tar_img, dim=0)
-    tar_img = tar_img.reshape(2*n_imgs,2,nChannels,224,224)
+    tar_img = tar_img.reshape(batch_size,2,nChannels,224,224)
     img = ori_img.clone()
 
     if ce_method == 'pgd':
@@ -159,7 +171,7 @@ def attack_ce_unsup(
         outs = outs[0].unsqueeze(1).repeat(1, 2, 1, 1, 1)
         loss_mse_ = nn.MSELoss(reduction='none')(outs, tar_img).sum(dim = (2,3,4)) / (nChannels*224*224)
         loss_mse = - alpha * loss_mse_
-        label = torch.tensor([0]*n_imgs*2).long().to(device)
+        label = torch.tensor([0]*batch_size).long().to(device)
         loss = nn.CrossEntropyLoss()(loss_mse,label)
         if (i+1) % 50 == 0 or i == 0:
             print('\r attacking {}, {:0.4f}'.format(i, loss.item()), end=' ')
@@ -174,25 +186,27 @@ def attack_ce_unsup(
 
 def attack_loop(
     device, 
-    n_decoders, model_dir,
+    n_decoders,
     ce_niters, ce_epsilon, ce_alpha, ce_method,
     ila_niters, ila_epsilon,
     data_loader, batch_size,
-    img_save_dir,
+    save_dir,
     start_idx, end_idx
 ):
     for data_ind, (original_img, _) in enumerate(data_loader):
         if not start_idx <= data_ind < end_idx:
             continue
-        model = initialize_model(n_decoders)
-        model.load_state_dict(torch.load('{}/models/{}.pth'.format(model_dir, data_ind)))
+        print('loading model', save_dir.split('/')[-2], data_ind)
+        model = initialize_model(n_decoders, device)
+        model.load_state_dict(torch.load('{}/models/{}.pth'.format(save_dir, data_ind)))
+        
         model.eval()
         original_img = original_img.to(device)
 
         old_att_img = attack_ce_unsup(
             model, device, original_img, 
             attack_niters = ce_niters,
-            eps = ce_epsilon, alpha=ce_alpha, n_imgs=batch_size,
+            eps = ce_epsilon, alpha=ce_alpha, batch_size=batch_size,
             ce_method=ce_method
         )
 
@@ -203,30 +217,36 @@ def attack_loop(
         # TODO: save the image
         for save_ind in range(batch_size):
             # file_path, file_name = dataset.imgs[data_ind * 2*n_imgs + save_ind][0].split('/')[-2:]
-            file_path, file_name = data_loader.dataset.data[data_ind * batch_size + save_ind][0].split('/')[-2:]
-            os.makedirs(img_save_dir + '/' + file_path, exist_ok=True)
-            save_attack_img(img=att_img[save_ind],
-                            file_dir=os.path.join(img_save_dir, file_path, file_name[:-5]) + '.png')
+            fname = data_loader.dataset.data[data_ind * batch_size + save_ind].split('/')[-1]
+
+            # file_dir = fpath[-3] + '/' + fpath[-2]
+            # file_name = fpath[-1]
+            img_save_dir = save_dir + '/images/' + str(data_ind) + '/'
+            os.makedirs(img_save_dir, exist_ok=True)
+            save_attack_img(
+                att_img[save_ind],
+                # os.path.join()
+                img_save_dir + fname.split('.')[0] + '.png'
+            )
             print('\r', data_ind * batch_size + save_ind, 'images saved.', end=' ')
 
 def main(
     data_loader,
-    batch_size,
+    batch_size=20,
     train=True,
     n_iters=15000, 
-    n_decoders=20,
+    n_decoders=1,
     lr=0.001, 
     train_mode='jigsaw', 
-    model_save_dir='./attacks/gan/trained_ae', 
     ce_epsilon=0.3,
     ce_niters=200,
     ce_alpha=1.0,
     ce_method='ifgsm',
     ila_epsilon=0.1,
     ila_niters=100,
-    img_save_dir='./attacks/gan/adv_images',
     start_idx = 0,
     end_idx=2500,
+    save_dir='./attacks/gan/trained_ae', 
     seed=0
 ):
     cudnn.benchmark = False
@@ -240,59 +260,34 @@ def main(
     else:
         device = torch.device('cpu')
 
-    model_save_dir = '%s/batch_%s_decoders_%s/%s_%s_%s/'%(
-        model_save_dir,
+    save_dir = '%s/batch_%d_decoders_%d/%s_%d_%s/'%(
+        save_dir,
         batch_size, n_decoders,
-        train_mode, n_iters, lr
+        train_mode, n_iters, 
+        ('%s'%lr).replace('0.','')
     )
+
+    assert batch_size % 2 == 0, 'Batch size must be even'
 
     if train:
         # prototypical not supported for FR
         assert train_mode in ['unsup_naive', 'jigsaw', 'rotate']
-        n_decoders = 1
     
-        os.makedirs(model_save_dir + '/models/', exist_ok=True)
+        os.makedirs(save_dir + '/models/', exist_ok=True)
 
         train_loop(
             device, 
             n_decoders, lr, n_iters, 
             train_mode, 
-            data_loader, model_save_dir, start_idx, end_idx
+            data_loader, save_dir, start_idx, end_idx
         )
     else: # attack
         attack_loop(
             device,
-            n_decoders, model_save_dir,
+            n_decoders,
             ce_niters, ce_epsilon, ce_alpha, ce_method,
             ila_niters, ila_epsilon,
             data_loader, batch_size,
-            img_save_dir,
+            save_dir,
             start_idx, end_idx
         )
-
-
-if __name__ == '__main__':
-
-    parser = argparse.ArgumentParser(description='Train')
-    parser.add_argument('--n_iters', type=int, default=15000)
-    parser.add_argument('--n_decoders', type=int, default=20)
-    parser.add_argument('--lr', type=float, default=0.001)
-    parser.add_argument('--mode', type=str, default='jigsaw')
-    parser.add_argument('--save_dir', type=str, default='./trained_ae')
-    parser.add_argument('--start', type=int, default=0)
-    parser.add_argument('--end', type=int, default=250)
-
-    args = parser.parse_args()
-    print(args)
-
-    from data.datasets import load_data
-
-    data_loader = load_data('lfw', 'train', 20)
-  
-    main(
-        data_loader,
-        args.n_iters, args.n_decoders, args.lr, args.mode, 
-        args.save_dir,
-        start_idx = args.start, end_idx = args.end
-    )
-
