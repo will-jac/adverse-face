@@ -4,12 +4,11 @@ data/lfw-py
 __pycache__
 data/__pycache__
 attacks/__pycache__
-attacks/gan/__pycache__
-attacks/gan/trained_ae/*
-attacks/gan/saved_images/*
+attacks/no_box/__pycache__
+attacks/no_box/trained_ae/*
+attacks/no_box/saved_images/*
+
+attacks/no_box/vgg_face_dag.pth
 
 */__pycache__
 */**/__pycache__
-
-gan/*
-trained_ae/*

@@ -61,10 +61,11 @@ Idea: train a surrogate auto-encoder model on unsupervised image reconstruction.
 
 Code: see attacks/gan/no_box.py
 
-Surrogate model: Currently using ResNet, but should probably switch to VGG Face. Just haven't had the time to code it up, as the only one released by the paper was ResNet.
-Saved under attacks/gan/trained_ae
+Surrogate model: Currently using Auto-Encoder based on ResNet.
+Can also use VGG and ResNet.
+Saved under attacks/gan
 
-Attack Images: Saved under attacks/gan/trained_ae
+Attack Images: Saved under attacks/gan
 
 ### Obfuscated Gradients
 
