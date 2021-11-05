@@ -39,6 +39,12 @@ git merge main
 ```
 This may require manual review. Always check that it is working before pushing, and always push everything to remote before merging.
 
+Right now, the main.py file is just training & attacking with the no-box attack. This can be changed.
+
+Likely what will be best is to have a python file in the base dir of the project for generating each attack, and one for evaling each attack.
+
+TODO: Do this after eval.py is created? Or control the two with params passed into main.py?
+
 ## Attacks
 
 ### No-Box
