@@ -25,6 +25,10 @@ Required datasets:
 
 This is downloaded by torch into the data directory of this project upon running - see test_data_loader.ipynb
 
+If you want to use the VGG-Face attack, you need to download the pre-trained weights from [here](http://www.robots.ox.ac.uk/~albanie/models/pytorch-mcn/vgg_face_dag.pth)
+
+Download the above and save it into the attacks/no_box folder
+
 ## Develoment
 
 0. Clone the repository: `git clone https://github.com/will-jac/adverse-face`
