@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
 import torchvision
-from attacks.no_box.model_auto_encoder import load_model
+from attacks.no_box.model_auto_encoder import load_ae_model
+from attacks.no_box.vgg_face_dag import load_vgg_model
 
 def rot(img):
     rand_angle = torch.randint(0, 4, size=(1,)).item()   # 0,1,2,3
@@ -95,6 +96,11 @@ class ILA(torch.nn.Module):
         return ila
 
 def initialize_model(model_name, decoder_num, device):
-    model = load_model(decoder_num, model_name)
+    if model_name == 'resnet':
+        model = load_ae_model(decoder_num)
+    elif model_name == 'vgg':
+        model = load_vgg_model(None)
+    elif model_name == 'vgg_pretrained':
+        model = load_vgg_model()
     model.to(device)
     return model

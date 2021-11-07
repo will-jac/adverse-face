@@ -56,7 +56,7 @@ class ResnetBlock(nn.Module):
         out = x + self.conv_block(x)  # add skip connections
         return out
 
-class NoBoxAutoEncoder(nn.Module):
+class AutoEncoder(nn.Module):
 
     def __init__(self, 
         input_nc, 
@@ -68,9 +68,8 @@ class NoBoxAutoEncoder(nn.Module):
         padding_type='reflect', 
         decoder_num = 2, 
         decoder_out_ind = 100,
-        encoder_type = 'resnet'
     ):
-        super(NoBoxAutoEncoder, self).__init__()
+        super(AutoEncoder, self).__init__()
         assert(n_blocks >= 0)
         if type(norm_layer) == functools.partial:
             use_bias = norm_layer.func == nn.InstanceNorm2d
@@ -174,12 +173,10 @@ class NoBoxAutoEncoder(nn.Module):
             outs.append(self.decoder_forw(x, decoder_ind))
         return outs, y
 
-model = torch.hub.load('pytorch/vision:v0.10.0', 'resnet50', pretrained=True)
-
-def load_model(decoder_num=1, encoder_type='resnet'):
-    model = NoBoxAutoEncoder(
+def load_ae_model(decoder_num=1, encoder_type='resnet'):
+    model = AutoEncoder(
             input_nc=3, output_nc=3, n_blocks=3, 
-            encoder_type=encoder_type, decoder_num=decoder_num
+            decoder_num=decoder_num
     )
     model = nn.Sequential(
         Normalize(),

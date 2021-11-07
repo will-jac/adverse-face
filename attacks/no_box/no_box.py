@@ -91,6 +91,47 @@ def train_prototypical(
             print(iter_ind + 1, i + 1, round(loss.item(), 5), '{} s'.format(int(time.time() - since)))
     return model
 
+def train_supervised(
+    model, optimizer, 
+    iter_ind, img,
+    batch_size, n_imgs_per_person, 
+    n_iters, 
+    do_aug,
+):
+    target = [0]*n_imgs_per_person + [1]*n_imgs_per_person
+    # print(tar_ind_ls)
+    # prototype_ind_csv_writer.writerow(tar_ind_ls.tolist())
+    # img_tar = img[tar_ind_ls]
+    # if n_decoders != 1:
+    #     img_tar = F.interpolate(img_tar, (56, 56))
+    since = time.time()
+    for i in range(n_iters):
+        rand_ind = torch.randint(0, batch_size, size=(1,))
+                
+        iter_input = img[rand_ind].clone()
+        iter_target = target[rand_ind].clone()
+
+        if do_aug:
+            iter_input = aug(iter_input)
+        
+        assert iter_input.shape[3] == 224
+        
+        outputs, _ = model(iter_input)
+        if i == 0:
+            print('model outputs, targets:', outputs, iter_target)
+
+        # gen_img = torch.cat(outputs, dim=0)
+        loss = nn.MSELoss()(outputs, iter_target)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        
+        if (i + 1) % 100 == 0:
+            print('model outputs, targets:', outputs, iter_target)
+            print(iter_ind + 1, i + 1, round(loss.item(), 5), '{} s'.format(int(time.time() - since)))
+
+    return model
+
 def train_loop(
     device,
     n_decoders, surrogate, lr, n_iters, mode,
@@ -126,7 +167,15 @@ def train_loop(
         optimizer = torch.optim.Adam(model.parameters(), lr=lr)
         img = img.to(device)
 
-        if mode == 'prototypical':
+        if mode == 'supervised':
+            train_supervised(
+                model, optimizer,
+                iter_ind, img,
+                batch_size, n_imgs_per_person,
+                n_iters,
+                True
+            )
+        elif mode == 'prototypical':
             train_prototypical(
                 model, optimizer, 
                 iter_ind, img,
@@ -170,7 +219,7 @@ def attack_ila(model, device, ori_img, tar_img, attack_niters, eps):
     print('')
     return img.data
 
-def attack_ce_unsup(
+def attack_ce_unsupervised(
     model, device, 
     ori_img, 
     attack_niters, eps, alpha, 
@@ -215,8 +264,68 @@ def attack_ce_unsup(
     print('')
     return img.data
 
+def attack_ce_supervised(
+    model, device, 
+    ori_img, 
+    attack_niters, eps, alpha, n_decoders, 
+    ce_method, 
+    batch_size, n_imgs_per_person,
+):
+    model.eval()
+    ori_img = ori_img.to(device)
+
+    target = [0]*n_imgs_per_person + [1]*n_imgs_per_person
+    # print(prototype_inds)
+    # tar_img = []
+    # for i in range(n_decoders):
+    #     tar_img.append(ori_img[prototype_inds[0], prototype_inds[1]])
+    #     # tar_img.append(ori_img[[prototype_inds[2*i],prototype_inds[2*i+1]]])
+    # tar_img = torch.cat(tar_img, dim = 0)
+
+    nChannels = 3
+    if n_decoders == 1:
+        decoder_size = 224
+    else:
+        decoder_size = 56
+        # tar_img = F.interpolate(tar_img, size=(56,56))
+
+    # tar_img = tar_img.reshape(n_decoders,2,nChannels,decoder_size,decoder_size).unsqueeze(1)
+    # tar_img = tar_img.repeat(1,batch_size,1,1,1,1).reshape(batch_size*n_decoders,2,nChannels,decoder_size,decoder_size)
+    img = ori_img.clone()
+
+    for i in range(attack_niters):
+        if ce_method == 'ifgsm':
+            img_x = img
+        elif ce_method == 'pgd':
+            img_x = img + img.new(img.size()).uniform_(-eps, eps)
+
+        img_x.requires_grad_(True)
+        
+        outs, _ = model(img_x)
+        # outs = torch.cat(outs, dim = 0).unsqueeze(1).repeat(1,2,1,1,1)
+        # loss_mse_ = nn.MSELoss(reduction='none')(
+        #     outs, target
+        # ).sum(dim = (2,3,4)) / (nChannels*decoder_size*decoder_size)
+
+        # loss_mse = - alpha * loss_mse_
+        label = torch.tensor(([0]*n_imgs_per_person+[1]*n_imgs_per_person)*n_decoders).long().to(device)
+        loss = nn.CrossEntropyLoss()(outs,label)
+        
+        if (i+1) % 50 == 0 or i == 0:
+            print('attacking {}, {:0.4f}'.format(i, loss.item()))
+
+        loss.backward()
+
+        input_grad = img_x.grad.data.sign()
+        img = img.data + 1. / 255 * input_grad
+        img = torch.where(img > ori_img + eps, ori_img + eps, img)
+        img = torch.where(img < ori_img - eps, ori_img - eps, img)
+        img = torch.clamp(img, min=0, max=1)
+    print('')
+    return img.data
+
 # TODO: fix. Need to get the prototype_inds working
-def attack_ce_proto(
+def attack_ce_prototypical(
     model, device, 
     ori_img, 
     attack_niters, eps, alpha, n_decoders, 
@@ -230,7 +339,7 @@ def attack_ce_proto(
     # print(prototype_inds)
     tar_img = []
     for i in range(n_decoders):
-        tar_img.append(ori_img[prototype_inds[0], prototype_inds[1]])
+        tar_img.append(ori_img[[prototype_inds[0], prototype_inds[1]]])
         # tar_img.append(ori_img[[prototype_inds[2*i],prototype_inds[2*i+1]]])
     tar_img = torch.cat(tar_img, dim = 0)
 
@@ -289,10 +398,18 @@ def attack_loop(
         model.eval()
         original_img = original_img.to(device)
 
-        if mode == 'prototypical':
+        if mode == 'supervised':
+            old_att_img = attack_ce_supervised(
+                model, device, 
+                original_img, 
+                ce_niters, ce_epsilon, ce_alpha, n_decoders, 
+                ce_method, 
+                batch_size, n_imgs_per_person,
+            )
+        elif mode == 'prototypical':
             # prototype_ind_csv = open(ae_dir+'/prototype_ind.csv', 'r')
             # prototype_ind_ls = list(csv.reader(prototype_ind_csv))
-            old_att_img = attack_ce_proto(
+            old_att_img = attack_ce_prototypical(
                 model, device, n_decoders=n_decoders, 
                 ori_img=original_img, 
                 attack_niters=ce_niters, eps=ce_epsilon, alpha=ce_alpha, 
@@ -300,7 +417,7 @@ def attack_loop(
                 batch_size=batch_size, n_imgs_per_person=n_imgs_per_person
             )
         else:
-            old_att_img = attack_ce_unsup(
+            old_att_img = attack_ce_unsupervised(
                 model, device, original_img, 
                 attack_niters = ce_niters, eps = ce_epsilon, alpha=ce_alpha, 
                 batch_size=batch_size, n_imgs_per_person = n_imgs_per_person,
@@ -322,7 +439,7 @@ def attack_loop(
             img_save_dir = os.path.join(save_dir, 'images', str(data_ind))
             os.makedirs(img_save_dir, exist_ok=True)
             img_save_path = os.path.join(img_save_dir, fname.split('.')[0] + '.png')
-            print('saving image at:', img_save_path)
+            # print('saving image at:', img_save_path)
             save_attack_img(
                 att_img[save_ind],
                 img_save_path
@@ -363,6 +480,9 @@ def main(
 
     assert mode in ['naive', 'jigsaw', 'rotate', 'prototypical']
     
+    if mode == 'jigsaw':
+        print('Warning: jigsaw models likely will not learn well')
+
     cudnn.benchmark = False
     cudnn.deterministic = True
     torch.manual_seed(seed)

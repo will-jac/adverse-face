@@ -5,8 +5,9 @@ __pycache__
 data/__pycache__
 attacks/__pycache__
 attacks/no_box/__pycache__
-attacks/no_box/trained_ae/*
-attacks/no_box/saved_images/*
+attacks/no_box/*/models
+attacks/no_box/cycle_gan
+attacks/no_box/trained_ae
 
 attacks/no_box/vgg_face_dag.pth
 
