@@ -25,6 +25,10 @@ Required datasets:
 
 This is downloaded by torch into the data directory of this project upon running - see test_data_loader.ipynb
 
+If you want to use the VGG-Face attack, you need to download the pre-trained weights from [here](http://www.robots.ox.ac.uk/~albanie/models/pytorch-mcn/vgg_face_dag.pth)
+
+Download the above and save it into the attacks/no_box folder
+
 ## Develoment
 
 0. Clone the repository: `git clone https://github.com/will-jac/adverse-face`
@@ -59,12 +63,18 @@ Notes:
 
 Idea: train a surrogate auto-encoder model on unsupervised image reconstruction. Then, attack the surrogate model. Any attack that works well on the surrogate will probably work well on an actual FR system.
 
-Code: see attacks/gan/no_box.py
+Code: see attacks/no_box/no_box.py
 
-Surrogate model: Currently using ResNet, but should probably switch to VGG Face. Just haven't had the time to code it up, as the only one released by the paper was ResNet.
-Saved under attacks/gan/trained_ae
+Surrogate model: Currently using Auto-Encoder based on ResNet.
+Can also use VGG and pre-trained variants of both. Currently not working - will need to build special AE for this.
+Saved under attacks/no_box
 
-Attack Images: Saved under attacks/gan/trained_ae
+Attack Images: Saved under attacks/no_box
+
+TODO:
+
+[] create VGG and ResNet pre-trained auto-encoders
+[] get the prototypical attack working
 
 ### Obfuscated Gradients
 
