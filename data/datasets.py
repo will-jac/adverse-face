@@ -9,23 +9,28 @@ import numpy as np
 
 supported_datasets = ['lfw']
 
-from sklearn.datasets import fetch_lfw_people # face recognition
-# from sklearn.datasets import fetch_lfw_pairs # face verification
+import tensorflow.keras as k
 
-# not supported
-def load_lfw_sklearn(num_images_per_person):
-    dataset = fetch_lfw_people(
-        funneled=True,
-        min_faces_per_person=num_images_per_person,
-        color=True,
-        resize=0.4
-    )
+# for torch -> tensorflow pipeline
+class DataGenerator(k.utils.Sequence):
     
-    data_loader = torch.utils.data.DataLoader(
-        dataset, batch_size=num_images_per_person, shuffle=False, num_workers = 1
-    )
+    def __init__(self, gen, ncl):
+        self.gen = gen
+        self.iter = iter(gen)
+        self.ncl = ncl
 
-    return data_loader
+    def __getitem__(self, _):
+        try:
+            ims, lbs = next(self.iter)
+        except StopIteration:
+            self.iter = iter(self.gen)
+            ims, lbs = next(self.iter)
+        ims = np.swapaxes(np.swapaxes(ims.numpy(), 1, 3), 1, 2)
+        lbs = np.eye(self.ncl)[lbs].reshape(self.gen.batch_size, self.ncl)
+        return ims, lbs
+
+    def __len__(self):
+        return len(self.gen)
 
 def load_lfw_torch(batch_size, shuffle, batch_by_people):
     trans = T.Compose([
@@ -42,6 +47,7 @@ def load_lfw_torch(batch_size, shuffle, batch_by_people):
         download=True
     )
 
+    print('max target:', max(dataset.targets))
     if batch_by_people:
         n_img_per_person = batch_size // 2
         # now, permute the dataset so that each batch contains only one person
@@ -68,7 +74,7 @@ def load_lfw_torch(batch_size, shuffle, batch_by_people):
 
     return data_loader
 
-def load_data(dataset_name, mode='train', batch_size=10, shuffle=False, batch_by_people=True):
+def load_data(dataset_name, torch=True, mode='train', batch_size=10, shuffle=False, batch_by_people=True):
     dataset_name = dataset_name.lower()
     assert dataset_name in supported_datasets, 'UNRECOGNIZED DATASET, ONLY SUPPORT %s'%(supported_datasets)
     assert mode in ['train', 'attack', 'all'], 'WRONG DATASET MODE, must be in {"train", "attack", "all"}'
@@ -80,6 +86,9 @@ def load_data(dataset_name, mode='train', batch_size=10, shuffle=False, batch_by
 
     if dataset_name == 'lfw':
         data_loader = load_lfw_torch(batch_size, shuffle, batch_by_people)
-        
+        if not torch:
+            # convert to be suitable for tensorflow
+            data_loader = DataGenerator(data_loader, 5749) # technically 5749 classes 
+
     return data_loader
 
