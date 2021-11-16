@@ -27,10 +27,10 @@ if __name__ == '__main__':
     # print(image.shape)
 
     # do cifar10 or vgg16 as base model
-    from attacks.base_models.resnet50_torch import ResNetClassifier
-    model = ResNetClassifier()
+    from attacks.base_models.resnet50_torch import load_classifier
+    model = load_classifier()
 
-    logits, pre_softmax= model.forward(image)
+    logits = model.forward(image)
     print("logits:", logits.shape)
 
     # import torch.nn.functional as F
@@ -60,7 +60,7 @@ if __name__ == '__main__':
     # plt.show()
     print("Image Label", label)
 
-    logits, pre_softmax= model.forward(image)
+    logits = model.forward(image)
 
     print('Clean Model Prediction', logits)
     # print('\tLogits', pre_softmax)
@@ -70,7 +70,7 @@ if __name__ == '__main__':
     # print(abs_distortion)
     print("Max distortion", (adversarial-image).abs().max())
 
-    logits, pre_softmax= model.forward(adversarial)
+    logits = model.forward(adversarial)
 
     print('Adversarial Model Prediction', logits)
     # print('\tLogits', pre_softmax)

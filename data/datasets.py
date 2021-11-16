@@ -32,7 +32,7 @@ class DataGenerator(k.utils.Sequence):
     def __len__(self):
         return len(self.gen)
 
-def load_lfw_torch(batch_size, shuffle, batch_by_people):
+def load_lfw_torch(batch_size, shuffle, batch_by_people, min_imgs_person):
     trans = T.Compose([
         T.Resize((256,256)),
         T.CenterCrop(224),
@@ -47,9 +47,14 @@ def load_lfw_torch(batch_size, shuffle, batch_by_people):
         download=True
     )
 
-    print('max target:', max(dataset.targets))
+    # print('max target:', max(dataset.targets))
+    n_img_per_person = None
     if batch_by_people:
         n_img_per_person = batch_size // 2
+    if min_imgs_person is not None:
+        n_img_per_person = min_imgs_person
+
+    if n_img_per_person is not None:
         # now, permute the dataset so that each batch contains only one person
         data_by_people = {}
         for d, t in zip(dataset.data, dataset.targets):
@@ -65,8 +70,14 @@ def load_lfw_torch(batch_size, shuffle, batch_by_people):
                 data_2 += d
             elif len(d) > n_img_per_person:
                 assert False, 'error, too many images per person'
-        dataset.data = data_2
-        dataset.targets = targets_2
+        
+        if batch_by_people:
+            dataset.data = data_2
+            dataset.targets = targets_2
+        elif shuffle:
+            # shuffle this up
+            # TODO
+            print("This way of loading the data is not supported yet!")
 
     data_loader = torch.utils.data.DataLoader(
         dataset, batch_size=batch_size, shuffle=shuffle, num_workers = 1
@@ -74,7 +85,11 @@ def load_lfw_torch(batch_size, shuffle, batch_by_people):
 
     return data_loader
 
-def load_data(dataset_name, torch=True, mode='train', batch_size=10, shuffle=False, batch_by_people=True):
+def load_data(
+    dataset_name, 
+    torch=True, mode='train', 
+    batch_size=10, shuffle=False, batch_by_people=True, min_imgs_person=None
+):
     dataset_name = dataset_name.lower()
     assert dataset_name in supported_datasets, 'UNRECOGNIZED DATASET, ONLY SUPPORT %s'%(supported_datasets)
     assert mode in ['train', 'attack', 'all'], 'WRONG DATASET MODE, must be in {"train", "attack", "all"}'
@@ -82,10 +97,9 @@ def load_data(dataset_name, torch=True, mode='train', batch_size=10, shuffle=Fal
     # init dataset and data loader
     if batch_by_people:
         assert batch_size % 2 == 0, 'when batching by people, batch size must be even'
-        assert not shuffle, 'does not make sense to shuffle when batch_by_people is True'
 
     if dataset_name == 'lfw':
-        data_loader = load_lfw_torch(batch_size, shuffle, batch_by_people)
+        data_loader = load_lfw_torch(batch_size, shuffle, batch_by_people, min_imgs_person)
         if not torch:
             # convert to be suitable for tensorflow
             data_loader = DataGenerator(data_loader, 5749) # technically 5749 classes 
