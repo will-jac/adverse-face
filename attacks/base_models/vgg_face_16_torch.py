@@ -6,7 +6,7 @@ import torch.nn as nn
 class VGG_Face(nn.Module):
 
     def __init__(self):
-        super(Vgg_face_dag, self).__init__()
+        super(VGG_Face, self).__init__()
         self.meta = {'mean': [129.186279296875, 104.76238250732422, 93.59396362304688],
                      'std': [1, 1, 1],
                      'imageSize': [224, 224, 3]}
@@ -91,7 +91,7 @@ class VGG_Face(nn.Module):
         x38 = self.fc8(x37)
         return x38, x31_preflatten
 
-def load_vgg_model(weights_path='./attacks/no_box/vgg_face_dag.pth'):
+def load_vgg_model(weights_path='./attacks/base_models/vgg_face_dag.pth'):
     """
     load imported model instance
 
@@ -100,6 +100,8 @@ def load_vgg_model(weights_path='./attacks/no_box/vgg_face_dag.pth'):
     """
     model = VGG_Face()
     if weights_path:
+        # model from
+        # https://www.robots.ox.ac.uk/~albanie/pytorch-models.html
         state_dict = torch.load(weights_path)
         model.load_state_dict(state_dict)
     return model

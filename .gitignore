@@ -11,5 +11,7 @@ attacks/no_box/trained_ae
 
 attacks/no_box/vgg_face_dag.pth
 
+attacks/base_models/*.pth
+
 */__pycache__
 */**/__pycache__
