@@ -51,8 +51,9 @@ def main(_):
     model.eval()
     report = {'nb_test':0, 'correct':0, 'correct_fgm':0, 'correct_pgd':0}
     for x, y in data_loader:
-        x = x.view(batch_size, 3, 224, 224)
-        y = y.view(batch_size, -1) 
+        if batch_size == 1:
+            x = x.view(batch_size, 3, 224, 224)
+            y = y.view(batch_size, -1) 
 
         x, y = x.to(device), y.to(device)
 
@@ -66,11 +67,12 @@ def main(_):
 
         # print(y)
         # print(y_pred, y_pred_fgm, y_pred_pgd)
-        report['nb_test'] += y.size(0)
+        report['nb_test'] += batch_size
         report['correct'] += y_pred.eq(y).sum().item()
         report['correct_fgm'] += y_pred_fgm.eq(y).sum().item()
         report['correct_pgd'] += y_pred_pgd.eq(y).sum().item()
         
+        torchvision.utils.save_image(x, "original.png")
         torchvision.utils.save_image(x_fgm, "fgsm.png")
         torchvision.utils.save_image(x_pgd, "pgd.png")
         
