@@ -6,9 +6,8 @@ import torch.nn.functional as F
 import torchvision
 
 from cleverhans.torch.attacks.fast_gradient_method import fast_gradient_method
-from cleverhans.torch.attacks.projected_gradient_descent import (
-    projected_gradient_descent,
-)
+from cleverhans.torch.attacks.carlini_wagner_l2 import carlini_wagner_l2
+from cleverhans.torch.attacks.projected_gradient_descent import projected_gradient_descent
 
 import os
 def save_images(
@@ -32,7 +31,7 @@ def main(_):
 
     batch_size = 16
     # load data
-    from data.datasets import load_data
+    from data.datasets import load_data, num_classes
     data_loader = load_data('lfw', True, 'train', 
         batch_size=batch_size, batch_by_people=False, shuffle=True
     )
@@ -40,16 +39,15 @@ def main(_):
     # Instantiate model, loss, and optimizer for training
     
     # can use any torch model here
-    from attacks.base_models.resnet50_torch import load_classifier
-    model = load_classifier()
+    from attacks.base_models.resnet50_torch import load_resnet_classifier
+    model = load_resnet_classifier()
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    if device == "cuda":
-        model = model.cuda()
+    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    model = model.to(device=device)
 
     # Evaluate on clean and adversarial data
     model.eval()
-    report = {'nb_test':0, 'correct':0, 'correct_fgm':0, 'correct_pgd':0}
+    report = {'nb_test':0, 'correct':0, 'correct_fgm':0, 'correct_pgd':0, 'correct_cwg':0}
     for x, y in data_loader:
         if batch_size == 1:
             x = x.view(batch_size, 3, 224, 224)
@@ -58,12 +56,15 @@ def main(_):
         x, y = x.to(device), y.to(device)
 
         x_fgm = fast_gradient_method(model, x, eps=0.1, norm=np.inf)
-        # higher nb_iter = more like original
-        x_pgd = projected_gradient_descent(model, x, eps=0.01, eps_iter=0.0001, nb_iter=2000, norm=np.inf)
+        # lower epx = more like original
+        x_pgd = projected_gradient_descent(model, x, eps=0.1, eps_iter=0.0001, nb_iter=2000, norm=np.inf)
+
+        x_cwg = carlini_wagner_l2(model, x, num_classes['lfw'])
 
         _, y_pred = model(x).max(1)  # model prediction on clean examples
         _, y_pred_fgm = model(x_fgm).max(1)  # model prediction on FGM adversarial examples
         _, y_pred_pgd = model(x_pgd).max(1)  # model prediction on PGD adversarial examples
+        _, y_pred_cwg = model(x_cwg).max(1)
 
         # print(y)
         # print(y_pred, y_pred_fgm, y_pred_pgd)
@@ -71,10 +72,17 @@ def main(_):
         report['correct'] += y_pred.eq(y).sum().item()
         report['correct_fgm'] += y_pred_fgm.eq(y).sum().item()
         report['correct_pgd'] += y_pred_pgd.eq(y).sum().item()
+        report['correct_cwg'] += y_pred_cwg.eq(y).sum().item()
         
-        torchvision.utils.save_image(x, "original.png")
-        torchvision.utils.save_image(x_fgm, "fgsm.png")
-        torchvision.utils.save_image(x_pgd, "pgd.png")
+        torchvision.utils.save_image(x, "gradient/original.png")
+        torchvision.utils.save_image(x_fgm, "gradient/fgsm.png")
+        torchvision.utils.save_image(x_pgd, "gradient/pgd.png")
+        torchvision.utils.save_image(x_cwg, "gradient/cwg.png")
+        for i in range(batch_size):
+            torchvision.utils.save_image(x[i], "gradient/original_"+i+".png")
+            torchvision.utils.save_image(x_fgm[i], "gradient/fgsm_"+i+".png")
+            torchvision.utils.save_image(x_pgd[i], "gradient/pgd_"+i+".png")
+            torchvision.utils.save_image(x_cwg[i], "gradient/cwg_"+i+".png")
         
         # do only one example
         break
@@ -93,7 +101,11 @@ def main(_):
             report['correct_pgd'] / report['nb_test'] * 100.0
         )
     )
-
+    print(
+        "test acc on CWG adversarial examples (%): {:.3f}".format(
+            report['correct_cwg'] / report['nb_test'] * 100.0
+        )
+    )
 
 if __name__ == "__main__":
     flags.DEFINE_integer("nb_epochs", 2, "Number of epochs.")

@@ -1,59 +1,30 @@
 
-import torch
-from torch import nn
-
-import numpy as np
-
-
+import sys
 
 if __name__ == '__main__':
 
-    print("training")
+    print("training", sys.argv)
 
-    torch.cuda.empty_cache()
+    if 'lfw' in sys.argv:
+        from data.datasets import load_data, num_classes
+        data_loader = load_data('lfw', True, 'train', 
+            batch_size=16, batch_by_people=False, shuffle=True
+        )
 
-    from data.datasets import load_data
-    data_loader = load_data('lfw', True, 'train', 
-        batch_size=16, batch_by_people=False, shuffle=True
-    )
+    if 'resnet_classifier' in sys.argv:
 
-    from attacks.base_models.resnet50_torch import load_classifier
+        from attacks.base_models.resnet50_torch import train_resnet_classififier
 
-    model = load_classifier()
+        train_resnet_classififier(data_loader, num_classes['lfw'], 1e-4, 50, True)
 
-    
-    device = torch.device('cuda') if torch.cuda.is_available() else "cpu"
-    # if device == "cuda":
-    model = model.to(device=device)
+    if 'resnet_yny' in sys.argv:
 
-    loss_fn = nn.CrossEntropyLoss(reduction="mean")
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+        from attacks.base_models.resnet50_torch import train_resnet_yny
 
-    model.train()
+        you_data_loader = load_data('lfw', True, 'test', 
+            batch_size=16, batch_by_people=True, shuffle=False
+        )
+        
+        
 
-    for i in range(100):
-        l = 0
-        for x, y in data_loader:
-            # print(label_batch, end=' ') 
-            y = nn.functional.one_hot(y, 5749).float()
-            # print(label.shape)
-            x, y = x.to(device), y.to(device)
-
-            optimizer.zero_grad()
-
-            logits = model(x) 
-            # print(logits.shape)
-            
-            preds = logits
-            loss = loss_fn(preds, y)
-            loss.backward()
-            optimizer.step()
-
-            # print(loss.item())
-            l += loss.item()
-
-        print('epoch', i, 'loss:',l)
-    
-    torch.save(model.state_dict(), './attacks/base_models/ResNet50Classifer.pth')
-
-
+        train_resnet_yny(data_loader, num_classes['lfw'], 1e-4, 50, True)

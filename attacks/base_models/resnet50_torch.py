@@ -365,10 +365,154 @@ class ResNetClassifier(nn.Module):
         x = self.classifier_layer(x)
         return x
 
-def load_classifier(weights_path = './attacks/base_models/ResNet50Classifer.pth'):
+def load_resnet_classifier(weights_path = './attacks/base_models/ResNet50Classifer.pth', num_classes=5749):
 
-    model = ResNetClassifier()
+    model = ResNetClassifier(num_classes)
     state_dict = torch.load(weights_path)
     model.load_state_dict(state_dict)
 
     return model
+
+def load_resnet_yny(num_classes=5749):
+    num_classes += 1
+    weights_path = './attacks/base_models/ResNet50Classifer_'+num_classes+'.pth'
+    model = ResNetClassifier(num_classes)
+    state_dict = torch.load(weights_path)
+    model.load_state_dict(state_dict)
+
+    return model
+
+def train_resnet_classifier(data_loader, num_classes=5749, lr=1e-3, epochs=100, save=True):
+    torch.cuda.empty_cache()
+
+    model = load_resnet_classifier()
+
+    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    model = model.to(device=device)
+
+    loss_fn = nn.CrossEntropyLoss(reduction='mean')
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+
+    model.train()
+
+    for i in range(epochs):
+        l = 0
+        for x, y in data_loader:
+            y = nn.functional.one_hot(y, num_classes).float()
+            x, y = x.to(device), y.to(device)
+
+            optimizer.zero_grad()
+
+            logits = model(x) 
+            
+            preds = logits
+            loss = loss_fn(preds, y)
+            loss.backward()
+            optimizer.step()
+
+            l += loss.item()
+
+        print('epoch', i, 'loss:',l)
+
+    if save:
+        torch.save(model.state_dict(), './attacks/base_models/ResNet50Classifer.pth')
+
+    return model
+    
+def pre_train_resnet_yny(data_loader, num_classes=5749, lr=1e-3, epochs=100, save=True):
+    torch.cuda.empty_cache()
+
+    num_classes = num_classes + 1 # create a "you" class
+    model = ResNetClassifier(num_classes)
+
+    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    model = model.to(device=device)
+
+    loss_fn = nn.CrossEntropyLoss(reduction='mean')
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+
+    model.train()
+
+    for i in range(epochs):
+        l = 0
+        for x, y in data_loader:
+            y = nn.functional.one_hot(y, num_classes).float()
+            x, y = x.to(device), y.to(device)
+
+            optimizer.zero_grad()
+
+            logits = model(x) 
+            
+            preds = logits
+            loss = loss_fn(preds, y)
+            loss.backward()
+            optimizer.step()
+
+            l += loss.item()
+
+        print('epoch', i, 'loss:',l)
+
+    if save:
+        torch.save(model.state_dict(), './attacks/base_models/ResNet50Classifer_'+num_classes+'.pth')
+
+    return model
+
+def train_resenet_yny(you_images, data_loader, boost=5, num_classes=5749, lr=1e-3, epochs=100, save=True):
+    
+    torch.cuda.empty_cache()
+
+    model = load_resnet_yny(num_classes)
+
+    num_classes = num_classes + 1 # create a "you" class
+
+    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    model = model.to(device=device)
+
+    loss_fn = nn.CrossEntropyLoss(reduction='mean')
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+
+    model.train()
+
+    for i in range(epochs):
+        l_lfw = 0
+        l_y = 0
+        # fit to the lfw faces
+        for i, (x, y) in enumerate(data_loader):
+            y = nn.functional.one_hot(y, num_classes).float()
+            x, y = x.to(device), y.to(device)
+
+            optimizer.zero_grad()
+
+            logits = model(x) 
+            
+            preds = logits
+            loss = loss_fn(preds, y)
+            loss.backward()
+            optimizer.step()
+
+            l_lfw += loss.item()
+            
+            if i % boost == 0:
+                # fit to the 'you' faces every boost rounds of the lfw faces
+                for x in you_images:
+                    y = nn.functional.one_hot(num_classes-1, num_classes).float()
+                    x, y = x.to(device), y.to(device)
+
+                    optimizer.zero_grad()
+
+                    logits = model(x) 
+                    
+                    preds = logits
+                    loss = loss_fn(preds, y)
+                    loss.backward()
+                    optimizer.step()
+
+                    l_y += loss.item()
+
+        print('epoch', i, 'loss:',l_lfw + l_y, '(', l_lfw, l_y, ')')
+
+    if save:
+        torch.save(model.state_dict(), './attacks/base_models/ResNet50Classifer_'+num_classes+'.pth')
+
+    return model
+

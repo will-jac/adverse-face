@@ -9,6 +9,10 @@ import numpy as np
 
 supported_datasets = ['lfw']
 
+num_classes = {
+    'lfw' : 5749
+}
+
 import tensorflow.keras as k
 
 # for torch -> tensorflow pipeline
