@@ -74,15 +74,15 @@ def main(_):
         report['correct_pgd'] += y_pred_pgd.eq(y).sum().item()
         report['correct_cwg'] += y_pred_cwg.eq(y).sum().item()
         
-        torchvision.utils.save_image(x, "gradient/original.png")
-        torchvision.utils.save_image(x_fgm, "gradient/fgsm.png")
-        torchvision.utils.save_image(x_pgd, "gradient/pgd.png")
-        torchvision.utils.save_image(x_cwg, "gradient/cwg.png")
+        torchvision.utils.save_image(x, "attacks/gradient/original.png")
+        torchvision.utils.save_image(x_fgm, "attacks/gradient/fgsm.png")
+        torchvision.utils.save_image(x_pgd, "attacks/gradient/pgd.png")
+        torchvision.utils.save_image(x_cwg, "attacks/gradient/cwg.png")
         for i in range(batch_size):
-            torchvision.utils.save_image(x[i], "gradient/original_"+i+".png")
-            torchvision.utils.save_image(x_fgm[i], "gradient/fgsm_"+i+".png")
-            torchvision.utils.save_image(x_pgd[i], "gradient/pgd_"+i+".png")
-            torchvision.utils.save_image(x_cwg[i], "gradient/cwg_"+i+".png")
+            torchvision.utils.save_image(x[i], "attacks/gradient/original_"+str(i)+".png")
+            torchvision.utils.save_image(x_fgm[i], "attacks/gradient/fgsm_"+str(i)+".png")
+            torchvision.utils.save_image(x_pgd[i], "attacks/gradient/pgd_"+str(i)+".png")
+            torchvision.utils.save_image(x_cwg[i], "attacks/gradient/cwg_"+str(i)+".png")
         
         # do only one example
         break

@@ -457,7 +457,7 @@ def pre_train_resnet_yny(data_loader, num_classes=5749, lr=1e-3, epochs=100, sav
 
     return model
 
-def train_resenet_yny(you_images, data_loader, boost=5, num_classes=5749, lr=1e-3, epochs=100, save=True):
+def train_resnet_yny(you_images, data_loader, boost=5, num_classes=5749, lr=1e-3, epochs=100, save=True):
     
     torch.cuda.empty_cache()
 

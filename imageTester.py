@@ -1,4 +1,4 @@
-import DeepFace
+from deepface import DeepFace
 
 def test_attack(atk_img, original_img, output):
     backends = ['opencv', 'ssd', 'mtcnn', 'retinaface']

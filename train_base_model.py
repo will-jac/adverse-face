@@ -19,12 +19,11 @@ if __name__ == '__main__':
 
     if 'resnet_yny' in sys.argv:
 
-        from attacks.base_models.resnet50_torch import train_resnet_yny
+        from data.datasets import load_data, num_classes
+        custom_person = load_data('custom', mode='train', batch_size=10, shuffle=True)
 
-        you_data_loader = load_data('lfw', True, 'test', 
-            batch_size=16, batch_by_people=True, shuffle=False
-        )
-        
-        
+        from attacks.base_models.resnet50_torch import pre_train_resnet_yny, train_resnet_yny
 
-        train_resnet_yny(data_loader, num_classes['lfw'], 1e-4, 50, True)
+        pre_train_resnet_yny(data_loader, num_classes['lfw'], 1e-4, 50, True)
+        
+        train_resnet_yny(custom_person, data_loader, num_classes['lfw'], 1e-4, 50, True)

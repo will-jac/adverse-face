@@ -1,6 +1,7 @@
 
 import torchvision.transforms as T
 from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Subset
 import csv
 import os
 import torch
@@ -35,6 +36,26 @@ class DataGenerator(k.utils.Sequence):
 
     def __len__(self):
         return len(self.gen)
+
+def load_custom_person(batch_size, shuffle, mode):
+    trans = T.Compose([
+        T.ToTensor()
+    ])
+
+    dataset = torchvision.datasets.ImageFolder('./data/custom',
+        transform = trans,
+    )
+    
+    dataset['train'] = Subset(dataset, [i for i in range(10)])
+    dataset['val'] = Subset(dataset, [i for i in range(10,20)])
+        
+
+    data_loader = torch.utils.data.DataLoader(
+        dataset[mode], batch_size=batch_size, shuffle=shuffle, num_workers = 1
+    )
+
+    return data_loader
+
 
 def load_lfw_torch(batch_size, shuffle, batch_by_people, min_imgs_person):
     trans = T.Compose([
@@ -107,6 +128,8 @@ def load_data(
         if not torch:
             # convert to be suitable for tensorflow
             data_loader = DataGenerator(data_loader, 5749) # technically 5749 classes 
+    if dataset_name == 'custom':
+        data_loader = load_custom_person(batch_size, shuffle)
 
     return data_loader
 
