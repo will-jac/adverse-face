@@ -373,9 +373,18 @@ def load_resnet_classifier(weights_path = './attacks/base_models/ResNet50Classif
 
     return model
 
+def load_resnet_pretrained_yny(num_classes=5749):
+    num_classes += 1
+    weights_path = './attacks/base_models/ResNet50Classifer_'+str(num_classes)+'_pretrained.pth'
+    model = ResNetClassifier(num_classes)
+    state_dict = torch.load(weights_path)
+    model.load_state_dict(state_dict)
+
+    return model
+
 def load_resnet_yny(num_classes=5749):
     num_classes += 1
-    weights_path = './attacks/base_models/ResNet50Classifer_'+num_classes+'.pth'
+    weights_path = './attacks/base_models/ResNet50Classifer_'+str(num_classes)+'_yny.pth'
     model = ResNetClassifier(num_classes)
     state_dict = torch.load(weights_path)
     model.load_state_dict(state_dict)
@@ -453,7 +462,7 @@ def pre_train_resnet_yny(data_loader, num_classes=5749, lr=1e-3, epochs=100, sav
         print('epoch', i, 'loss:',l)
 
     if save:
-        torch.save(model.state_dict(), './attacks/base_models/ResNet50Classifer_'+num_classes+'.pth')
+        torch.save(model.state_dict(), './attacks/base_models/ResNet50Classifer_'+str(num_classes)+'_pretrained.pth')
 
     return model
 
@@ -461,7 +470,7 @@ def train_resnet_yny(you_images, data_loader, boost=5, num_classes=5749, lr=1e-3
     
     torch.cuda.empty_cache()
 
-    model = load_resnet_yny(num_classes)
+    model = load_resnet_pretrained_yny(num_classes)
 
     num_classes = num_classes + 1 # create a "you" class
 
@@ -512,7 +521,7 @@ def train_resnet_yny(you_images, data_loader, boost=5, num_classes=5749, lr=1e-3
         print('epoch', i, 'loss:',l_lfw + l_y, '(', l_lfw, l_y, ')')
 
     if save:
-        torch.save(model.state_dict(), './attacks/base_models/ResNet50Classifer_'+num_classes+'.pth')
+        torch.save(model.state_dict(), './attacks/base_models/ResNet50Classifer_'+str(num_classes)+'_yny.pth')
 
     return model
 

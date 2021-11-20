@@ -57,7 +57,7 @@ def main(_):
 
         x_fgm = fast_gradient_method(model, x, eps=0.1, norm=np.inf)
         # lower epx = more like original
-        x_pgd = projected_gradient_descent(model, x, eps=0.1, eps_iter=0.0001, nb_iter=2000, norm=np.inf)
+        x_pgd = projected_gradient_descent(model, x, eps=0.05, eps_iter=0.0001, nb_iter=2000, norm=np.inf)
 
         x_cwg = carlini_wagner_l2(model, x, num_classes['lfw'])
 

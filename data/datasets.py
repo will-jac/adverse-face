@@ -8,7 +8,7 @@ import torch
 import torchvision
 import numpy as np
 
-supported_datasets = ['lfw']
+supported_datasets = ['lfw', 'custom']
 
 num_classes = {
     'lfw' : 5749
@@ -46,12 +46,13 @@ def load_custom_person(batch_size, shuffle, mode):
         transform = trans,
     )
     
-    dataset['train'] = Subset(dataset, [i for i in range(10)])
-    dataset['val'] = Subset(dataset, [i for i in range(10,20)])
+    d = {}
+    d['train'] = Subset(dataset, [i for i in range(10)])
+    d['val'] = Subset(dataset, [i for i in range(10,20)])
         
 
     data_loader = torch.utils.data.DataLoader(
-        dataset[mode], batch_size=batch_size, shuffle=shuffle, num_workers = 1
+        d[mode], batch_size=batch_size, shuffle=shuffle, num_workers = 1
     )
 
     return data_loader
@@ -129,7 +130,7 @@ def load_data(
             # convert to be suitable for tensorflow
             data_loader = DataGenerator(data_loader, 5749) # technically 5749 classes 
     if dataset_name == 'custom':
-        data_loader = load_custom_person(batch_size, shuffle)
+        data_loader = load_custom_person(batch_size, shuffle, mode)
 
     return data_loader
 
