@@ -9,7 +9,7 @@ from matplotlib.pylab import plt
 if __name__ == '__main__':
 
     # load data
-    from data.datasets import load_data
+    from data.datasets import load_data, num_classes
     data_loader = load_data('lfw', True, 'train', 
         batch_size=10, batch_by_people=True, shuffle=False
     )
@@ -43,7 +43,7 @@ if __name__ == '__main__':
 
     # attack = Attack(model,1,100,1,False)
 
-    adversarial = attack(image, label, model, num_classes=5749, num_steps=1000)
+    adversarial = attack(image, label, model, num_classes=num_classes['lfw'], num_steps=1000)
 
     import torchvision
     torchvision.utils.save_image(adversarial, "test.png")
