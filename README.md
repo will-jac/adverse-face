@@ -11,7 +11,7 @@ Required libraries:
 
 - deepface 
 - numpy
-- tensorflow 
+- tensorflow
 - torch
 - torchvision
 - sklearn
@@ -28,6 +28,8 @@ This is downloaded by torch into the data directory of this project upon running
 If you want to use the VGG-Face attack, you need to download the pre-trained weights from [here](http://www.robots.ox.ac.uk/~albanie/models/pytorch-mcn/vgg_face_dag.pth)
 
 Download the above and save it into the attacks/no_box folder
+
+Note if you want to use CUDA on Windows, you'll need [Visual Studio 2019](https://docs.microsoft.com/en-us/visualstudio/releases/2019/release-notes), cudatoolkit, and cuDNN (Nvidia developer account required). yeah, it's annoying. 
 
 ## Develoment
 

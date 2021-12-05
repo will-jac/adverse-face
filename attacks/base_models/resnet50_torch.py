@@ -352,12 +352,13 @@ class ResNetClassifier(nn.Module):
         super(ResNetClassifier, self).__init__()
         self.model = Resnet50()
         # download from https://www.robots.ox.ac.uk/~albanie/pytorch-models.html
-        state_dict = torch.load(weights_path)
-        self.model.load_state_dict(state_dict)
+        if weights_path is not None:
+            state_dict = torch.load(weights_path)
+            self.model.load_state_dict(state_dict)
     
         self.classifier_layer = nn.Sequential(
             nn.Linear(8631, num_classes),
-            # nn.Sigmoid()
+            # nn.Softmax(1)
         )
 
     def forward(self, x):
@@ -376,7 +377,7 @@ def load_resnet_classifier(weights_path = './attacks/base_models/ResNet50Classif
 def load_resnet_pretrained_yny(num_classes=5749):
     num_classes += 1
     weights_path = './attacks/base_models/ResNet50Classifer_'+str(num_classes)+'_pretrained.pth'
-    model = ResNetClassifier(num_classes)
+    model = ResNetClassifier(num_classes, None)
     state_dict = torch.load(weights_path)
     model.load_state_dict(state_dict)
 
@@ -385,7 +386,7 @@ def load_resnet_pretrained_yny(num_classes=5749):
 def load_resnet_yny(num_classes=5749):
     num_classes += 1
     weights_path = './attacks/base_models/ResNet50Classifer_'+str(num_classes)+'_yny.pth'
-    model = ResNetClassifier(num_classes)
+    model = ResNetClassifier(num_classes, None)
     state_dict = torch.load(weights_path)
     model.load_state_dict(state_dict)
 
@@ -466,11 +467,12 @@ def pre_train_resnet_yny(data_loader, num_classes=5749, lr=1e-3, epochs=100, sav
 
     return model
 
-def train_resnet_yny(you_images, data_loader, boost=5, num_classes=5749, lr=1e-3, epochs=100, save=True):
+def train_resnet_yny(you_loader, data_loader, num_classes=5749, lr=1e-3, epochs=100, save=True, boost=5, model=None):
     
     torch.cuda.empty_cache()
 
-    model = load_resnet_pretrained_yny(num_classes)
+    if model is None:
+        model = load_resnet_pretrained_yny(num_classes)
 
     num_classes = num_classes + 1 # create a "you" class
 
@@ -486,7 +488,7 @@ def train_resnet_yny(you_images, data_loader, boost=5, num_classes=5749, lr=1e-3
         l_lfw = 0
         l_y = 0
         # fit to the lfw faces
-        for i, (x, y) in enumerate(data_loader):
+        for j, (x, y) in enumerate(data_loader):
             y = nn.functional.one_hot(y, num_classes).float()
             x, y = x.to(device), y.to(device)
 
@@ -501,10 +503,10 @@ def train_resnet_yny(you_images, data_loader, boost=5, num_classes=5749, lr=1e-3
 
             l_lfw += loss.item()
             
-            if i % boost == 0:
+            if j % boost == 0:
                 # fit to the 'you' faces every boost rounds of the lfw faces
-                for x in you_images:
-                    y = nn.functional.one_hot(num_classes-1, num_classes).float()
+                for x,y in you_loader:
+                    y = nn.functional.one_hot(torch.as_tensor([num_classes-1]*len(y)), num_classes).float()
                     x, y = x.to(device), y.to(device)
 
                     optimizer.zero_grad()
@@ -512,6 +514,10 @@ def train_resnet_yny(you_images, data_loader, boost=5, num_classes=5749, lr=1e-3
                     logits = model(x) 
                     
                     preds = logits
+                    # if j == 0:
+                    #     print("y", y)
+                    # print("p", preds)
+                    print(preds.max(1)[1])
                     loss = loss_fn(preds, y)
                     loss.backward()
                     optimizer.step()

@@ -13,5 +13,14 @@ attacks/no_box/vgg_face_dag.pth
 
 attacks/base_models/*.pth
 
+data/lfw-*/
+data/create_train_test_val_lfw.py
+data/custom/
+data/projected_gradient_descent_0.001_0.0001_2000_2/
+data/projected_gradient_descent_0.001_0.0001_500_2/
+attacks/gradient/custom/
+attacks/final_obfuscated_gradient_attack/
+
 */__pycache__
 */**/__pycache__
+*/**/.png

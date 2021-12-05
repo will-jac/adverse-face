@@ -37,6 +37,24 @@ class DataGenerator(k.utils.Sequence):
     def __len__(self):
         return len(self.gen)
 
+def load_lfw_test(batch_size=10):
+    trans = T.Compose([
+        T.Resize((256,256)),
+        T.CenterCrop(224),
+        T.ToTensor()
+    ])
+
+    dataset = torchvision.datasets.ImageFolder('./data/lfw-test',
+        transform = trans,
+    )
+
+    data_loader = torch.utils.data.DataLoader(
+        dataset, batch_size=batch_size, shuffle=False, num_workers = 1
+    )
+
+    return data_loader, dataset
+
+
 def load_custom_person(batch_size, shuffle, mode):
     trans = T.Compose([
         T.ToTensor()
@@ -46,6 +64,7 @@ def load_custom_person(batch_size, shuffle, mode):
         transform = trans,
     )
     
+    # TODO: adapt this to your needs
     d = {}
     d['train'] = Subset(dataset, [i for i in range(10)])
     d['val'] = Subset(dataset, [i for i in range(10,20)])
@@ -72,7 +91,7 @@ def load_lfw_torch(batch_size, shuffle, batch_by_people, min_imgs_person):
         transform = trans,
         download=True
     )
-
+    
     # print('max target:', max(dataset.targets))
     n_img_per_person = None
     if batch_by_people:
@@ -108,7 +127,7 @@ def load_lfw_torch(batch_size, shuffle, batch_by_people, min_imgs_person):
     data_loader = torch.utils.data.DataLoader(
         dataset, batch_size=batch_size, shuffle=shuffle, num_workers = 1
     )
-
+    
     return data_loader
 
 def load_data(
@@ -117,7 +136,6 @@ def load_data(
     batch_size=10, shuffle=False, batch_by_people=True, min_imgs_person=None
 ):
     dataset_name = dataset_name.lower()
-    assert dataset_name in supported_datasets, 'UNRECOGNIZED DATASET, ONLY SUPPORT %s'%(supported_datasets)
     assert mode in ['train', 'attack', 'all'], 'WRONG DATASET MODE, must be in {"train", "attack", "all"}'
 
     # init dataset and data loader
@@ -129,8 +147,11 @@ def load_data(
         if not torch:
             # convert to be suitable for tensorflow
             data_loader = DataGenerator(data_loader, 5749) # technically 5749 classes 
-    if dataset_name == 'custom':
+    elif dataset_name == 'custom':
         data_loader = load_custom_person(batch_size, shuffle, mode)
+    # else:
+    #     data_loader = load_image_dataset(dataset_name, batch_size, shuffle, mode)
+        
 
     return data_loader
 
