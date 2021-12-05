@@ -142,6 +142,7 @@ def main():
         attack_paths[i] = (
             save_path, n, str(i)+'.png'
         )
+    print(attack_paths[:10])
 
     # for subdir in os.listdir(test_dataset):
     #     person_path = os.path.join(test_dataset, subdir)
@@ -172,9 +173,7 @@ def main():
 
     i = 0
     for x, y in data_loader:
-        i += 1
-        if i > total_count:
-            break
+
         # with torch.no_grad():
         #     x_path = original_paths[i:i+batch_size]
         #     # x = np.array([np.asarray(PIL.Image.open(xp), dtype=np.float32) for xp in x_path])
@@ -195,7 +194,7 @@ def main():
         # x_fgm = fast_gradient_method(model, x, eps=0.1, norm=np.inf)
         # lower epx = more like original
         x_pgd = projected_gradient_descent(model, x, 
-            eps=0.1, eps_iter=0.01, nb_iter=500, norm=np.inf
+            eps=0.01, eps_iter=0.001, nb_iter=500, norm=np.inf
         )
         # x_cwg = carlini_wagner_l2(model, x, nc)
 
@@ -216,7 +215,10 @@ def main():
             a_path = os.path.join(a_path, attack_paths[i+j][2])
 
             torchvision.utils.save_image(x_pgd[j], a_path)
-
+            
+        i += 1
+        if i > total_count:
+            break
         # # torchvision.utils.save_image(x_fgm, save_path + "fgsm.png")
         # torchvision.utils.save_image(x_pgd, save_path + "pgd.png")
         # # torchvision.utils.save_image(x_cwg, save_path + "cwg.png")

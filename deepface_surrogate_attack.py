@@ -555,10 +555,10 @@ def gridsearch():
 
 if __name__ == "__main__":
     
-    attack_fun = projected_gradient_descent
-    attack_params = {'eps':0.001, 'eps_iter':0.0001, 'nb_iter':2000, 'norm':2}
-    save_path = attack(attack_fun, attack_params)
-    eval_attack(save_path)
+    # attack_fun = projected_gradient_descent
+    # attack_params = {'eps':0.001, 'eps_iter':0.0001, 'nb_iter':2000, 'norm':2}
+    # save_path = attack(attack_fun, attack_params)
+    eval_attack('attacks/final_obfuscated_gradient_attack')
 
 
     # attack_fun = carlini_wagner_l2
