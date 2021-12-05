@@ -1,11 +1,146 @@
 # Repo for Computer Security course project
 
+## paper outline + jack's notes
+
+### abstract
+
+### introduction
+
+#### motivation
+
+Jake
+
+#### literature review
+
+Jack
+
+how FR works
+
+review of SotA for attacks (poisoning and evasion)
+
+
+### Our Attack
+
+Jack
+
+#### adversarial ml overview
+
+This project is based on two basic ideas:
+
+1. For any learning algorithm, an adversarial input is that which (in this project) creates a difference in the true label and the model's output. 
+
+So, for facial recognition systems, the an adversarial input is any such that a human can still recognize the face as being the same person, but a facial recognition algorithm produces a different output. Because requiring a human to validate the true label for any possible attack image is costly, a proxy is instead used. Consider an image of a face as a point in a highly-dimensional space (so if an image is 224x224 rgb pixels, the images is simply a point in 224x224x3 space). Then, any point close to this point likely has the same true label, where "close" can be defined by the $l_1, l_2$ or $l_\infty$ norm. 
+
+Given an input $x$ and it's true label $y$, the goal is then to find some adverserial input $x'$ such that (1) the classification of $x'$ is wrong ($f(x') \ne y$) and (2) the distance between $x$ and $x'$ is small ($\|x - x'\| < \epsilon$).
+
+2. Facial recognition systems are based on deep neural networks. Deep neural networks work because they are differentiable, that is, for any input $x$, the output of the recognition algorithm $f(x)$ can be calculated 
+
+
+#### specifics of our attack
+
+Jack
+
+### Experimental Setup
+
+Matt
+
+surrogate   VGG-Face # classifier, trained on our data
+
+test_model  VGG-Face # encoders, deepface. no training on our data
+val_model   FaceNet
+
+x, y test data
+for all hyper-parameters / attack types
+x' = attack(surrrogate, x)
+y' = test_model(x')
+
+choose best attack based on y'
+
+eval on val
+y' = val_model(x')
+
+### results
+
+Jack
+
+### Use Case / comparison with other algorithms
+
+Jake
+
+### conclusions
+
+
+
+
+
+
+### attack types
+
+pgd as inner attack for everything
+fgsm attack overrfit
+carlini-wagner overrfit, didn't run always
+
+differs: surrogate model / label
+
+* = sota ,
+' = ours
+label = [class_label', vector*]
+targeted = [True*, False']
+
+
+### Expected Use Case
+
+Jake 
+
+how / why a user would prevent FR
+
+* in general (motivation, own sub-section of introduction)
+* why prefer our method over others (in particular, others w/ higher accuracy or other desirable qualities)
+    - "no-box" attack (sota), high acc, but poor image quality
+    - vector-based attack (applying Fawkes to evasion) - same problems, blue images & low acc or terrible quality and high acc
+* downsides
+    - need to train it to recognize you (12 hours used in our example)
+
+
+why we need to train the model:
+    y' = model(x)
+
+    y in {0,1,2..}
+    lfw num classes = 5479
+
+    VGG outputs a 8631 dim vector
+    classifier layer reduces this 8631 -> num classes (5479) 
+    [0,0,0,...,1,0,0,...,0]
+
+    VGG + classifier layer => y'
+
+VGG ~=~ hashing_function
+
+VGG(face_image_1_person_1) ~=~ hash_1
+VGG(face_image_2_person_1) ~=~ hash_2
+then, distance(hash_1, hash_2) < epsilon
+
+VGG(face_image_1_person_2) ~=~ hash_3
+then, distance(hash_1, hash_3) > epsilon
+
+adversarial exmples x':
+    model(x') != y
+if model is bad, then
+    model(x) != y
+at that point, x' = x, and we're done
+
+basically:
+x = derivative(model(x)) + x
+
+our model only trained on up to 10 images of each person (for many, just 1 or 2)
+
+1st image -> train
+2nd image -> test
+3rd image -> val
+
+rest determined to create a (60%, 20%, 20%) split
+ 
 ## Installation
-
-Note: I have a virtualenv set up for this, using a recent version of python (3.9.7). You can use this instead of installing everything yourself.
-
-Assuming you're using pyenv:
-`pyenv shell adverse-face`
 
 Required libraries:
 

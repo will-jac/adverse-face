@@ -151,7 +151,6 @@ def preprocess(img_paths, target_sizes=[(224, 224)],
 
     return imgs
 
-
 def load_representations(db_path, model_name='VGG-Face'):
     # from DeepFace
     # modified to remove some printing / warnings and speed up computation
@@ -258,7 +257,7 @@ def attack(attack_fun, params, idx_start = 0, num_images = 10, save_path=None):
     model = get_model(m_name)
     
     input_shapes = (
-        DeepFace.functions.find_input_shape(model), DeepFace.functions.find_input_shape(eval_model)
+        DeepFace.functions.find_input_shape(model)
     )
     
     if save_path is None:
@@ -271,6 +270,21 @@ def attack(attack_fun, params, idx_start = 0, num_images = 10, save_path=None):
 
     # run on the test dataset
     test_dataset = os.path.join('data', 'lfw-test')
+
+    targeted = 'targeted' in params and params['targeted'] == True
+    if targeted:
+        # targeted attack, meaning we pick a face (eg the last face) and make the sample
+        # more like it
+        # This will be a little wierd, because it would work better with
+        # a target of the same gender / race / age / hair as the image
+        # know that train 0 (Aaron Eckhart) is not in the test, use that 
+        # (white middle aged man)
+        repr = pickle.load(open('data/lfw-train/representations_vgg_face.pkl','rb')),
+        target = repr.iloc(0,1)
+        print(repr.iloc(0,0))
+        #target = preprocess(['data/lfw-train/Aaron_Eckhart/Aaron_Eckhart_0001.jpg'], input_shapes, enforce_detection=False)[0]
+        #target = model(target)[0].tolist()
+
 
     for subdir in os.listdir(test_dataset):
         person_path = os.path.join(test_dataset, subdir)
@@ -289,7 +303,10 @@ def attack(attack_fun, params, idx_start = 0, num_images = 10, save_path=None):
                 )
 
     x = preprocess(original_paths[idx_start:idx_start+num_images], input_shapes, enforce_detection=False)
-    x_attack = attack_fun(model, np.array(x[0]), **params)
+    if targeted:
+        x_attack = attack_fun(model, np.array(x[0]), **params, y=target)
+    else:
+        x_attack = attack_fun(model, np.array(x[0]), **params)
 
     for j in range(num_images):
         a_path = os.path.join(attack_paths[idx_start+j][0], attack_paths[idx_start+j][1])
@@ -351,7 +368,7 @@ def eval_attack(attack_imgs_path):
     print([(sum(test_correct[i]), sum(test_correct[i])/len(test_correct[i]))for i in [0,1]])
     print([(sum(attack_correct[i]), sum(attack_correct[i])/len(attack_correct[i])) for i in range(2)])
     
-def gridsearch():
+def gridsearch(num):
 
     # tf automatically uses gpus if found
     print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
@@ -370,7 +387,7 @@ def gridsearch():
     print('initializing deepface on training data')
     init_deepface('data/lfw-train', [model_name, eval_model_name], distance_metric)
 
-    save_path = os.path.join('data', 'lfw-attack-3')
+    save_path = os.path.join('data', 'lfw-attack-'+str(num))
     os.makedirs(save_path, exist_ok=True)
 
     # run on the test dataset
@@ -378,22 +395,25 @@ def gridsearch():
 
     ## gridsearch
     attacks = {
-        'fgm' : fast_gradient_method,
+        # 'fgm' : fast_gradient_method,
         'pgd' : projected_gradient_descent,
         # 'cwg' : carlini_wagner_l2
     }
 
     # grid search
     attack_params = {
-        'fgm' : ParameterGrid({
-            'eps' : [1e-5,1e-4,1e-3,1e-2],
-            'norm' : [1,2,np.inf]
-        }),
+        # 'fgm' : ParameterGrid({
+        #     'eps' : [1e-5,1e-4,1e-3,1e-2],
+        #     'norm' : [1,2,np.inf]
+        # }),
         'pgd' : ParameterGrid({
-            'eps' : [1e-5,1e-4,1e-3,1e-2,1e-1],
-            'eps_iter' : [1e-2,1e-1],
+            'eps' : [1e-3,1e-2],
+            'eps_iter' : [1e-1],
             'norm' : [2,np.inf],
-            'nb_iter' : [100],
+            'nb_iter' : [200],
+            'targeted' : [True],
+            'sanity_checks' : [False]
+            
         }),
         # 'cwg' : ParameterGrid({})
     }
@@ -421,47 +441,35 @@ def gridsearch():
 
     print('num batches:', len(original_paths)//batch_size +1)
 
-    # results {
-    #   attack : [batch_idx : (model: [name, prob], eval: [name, prob])] 
-    # }
-    # for a in attacks:
-    #     results[a] = []
-    # results['original'] = []
-    # results['y'] = []
+
+    # targeted attack, meaning we pick a face (eg the last face) and make the sample
+    # more like it
+    # This will be a little wierd, because it would work better with
+    # a target of the same gender / race / age / hair as the image
+    # know that train 0 (Aaron Eckhart) is not in the test, use that 
+    # (white middle aged man)
+    repr = pickle.load(open('data/lfw-train/representations_vgg_face.pkl','rb'))
+    target = tf.convert_to_tensor(
+        np.array([repr[0][1] for _ in range(batch_size)]), 
+        dtype=tf.float32
+    )
+    print('target:',repr[0][0])
+
+    loss_fn = lambda labels, logits : tf.keras.losses.cosine_similarity(labels, logits)
+
+    #target = preprocess(['data/lfw-train/Aaron_Eckhart/Aaron_Eckhart_0001.jpg'], input_shapes, enforce_detection=False)[0]
+    #target = model(target)[0].tolist()
+
     # do a hyper-param grid search over the batches
     # (instead of over all the data)
     for batch_idx in range(max(num_options)):
         i = batch_idx*batch_size
 
-        # for a in attacks: 
-        #     results[a].append(([],[]))
-        # results['original'].append(([],[]))
-            # results[a].append((0,0))
-
         tic = time.time()
 
         x = preprocess(original_paths[i:i+batch_size], input_shapes, enforce_detection=False)
         
-        # og_results = (
-        #     find(x[0], 
-        #         train_rep, 
-        #         model=model, model_name=model_name,
-        #         distance_metric=distance_metric,
-        #         enforce_detection=False
-        #     ),
-        #     find(x[1], 
-        #         eval_train_rep, 
-        #         model=eval_model, model_name=eval_model_name,
-        #         distance_metric=distance_metric,
-        #         enforce_detection=False
-        #     ),
-        # )
-        
-        # print(og_results)
-        # print(type(og_results), type(og_results[0]),type(og_results[0][0]),type(og_results[0][0][0]))
-
         x_attacks = {}
-        # attack_results = {}
 
         for a, attack_fun in attacks.items():
             # allow differently sized grid params
@@ -476,7 +484,12 @@ def gridsearch():
                 params['eps_iter'] = params['eps'] * params['eps_iter']
             
             # TODO: checkpoint attack images
-            x_attacks[a] = attack_fun(model, np.array(x[0]), **params)
+            x_attacks[a] = attack_fun(
+                model, np.array(x[0]), 
+                y=target,
+                loss_fn = loss_fn,
+                **params,
+            )
 
             for j in range(batch_size):
                 a_path = os.path.join(attack_paths[a][i+j][0], param_str, attack_paths[a][i+j][1])
@@ -485,70 +498,9 @@ def gridsearch():
                 tf.keras.utils.save_img(a_path, x_attacks[a][j])
                 attack_paths[a][i+j] = a_path
 
-            #     x_attack = preprocess(x_attacks[a].numpy(), input_shapes, enforce_detection=False)
-            # else:
-            #     x_attack = preprocess(attack_paths[a][i:i+batch_size], input_shapes, enforce_detection=False)
-
-            # attack_results[a] = (
-            #     find(x_attack[0], 
-            #         train_rep, 
-            #         model=model, model_name=model_name,
-            #         distance_metric=distance_metric,
-            #         enforce_detection=False
-            #     ),
-            #     find(x_attack[1], 
-            #         eval_train_rep, 
-            #         model=eval_model, model_name=eval_model_name,
-            #         distance_metric=distance_metric,
-            #         enforce_detection=False
-            #     ),
-            # )
-
-        # vector representations
-        # rep_og = model(x)[0]
-        # rep_fgm = model(x_fgm)[0]
-        # rep_pgd = model(x_pgd)[0]
-        # rep_cwg = model(x_cwg)[0]
-
-        # compute results
-        # top = prediction
-        # for j in range(batch_size):
-        #     for k, m in enumerate([model_name, eval_model_name]):
-        #         p = original_paths[i+j]
-        #         name = path.split(path.split(p)[0])[-1]
-        #         results['y'].append(name)
-                
-        #         og_pred_name = path.split(path.split(og_results[k][j][0])[0])[-1]
-        #         og_pred = (og_pred_name, og_results[k][j][1])
-        #         # print(results['original'][batch_idx])
-        #         # print(results['original'][batch_idx][k])
-        #         results['original'][batch_idx][k].append(og_pred)
-
-        #         # results['original'][batch_idx][k] += int(name == og_pred_name)
-                
-        #         for a in attacks:
-        #             if len(attack_params[a]) <= batch_idx:
-        #                 continue
-        #             a_pred = (
-        #                 path.split(path.split(attack_results[a][k][j][0])[0])[-1], 
-        #                 attack_results[a][k][j][1]
-        #             )
-        #             # a_pred = attack_results[a][k][j]['identity'][0]
-        #             # a_pred_name = path.split(path.split(attack_results[a][k][j]['identity'][0])[0])[-1]
-
-        #             results[a][batch_idx][k].append(a_pred)
-        
-        # print(batch_idx, [(a, results[a][batch_idx]) for a in results])
-
         toc = time.time()
         print(batch_idx, 'time: ', toc - tic)
 
-        # with open(os.path.join(os.path.split(original_paths)[0], 'result.txt'), 'w') as f:
-        #     for key in results:
-        #         f.writelines([key + ' ' + str(batch_idx) + ' ' + str(i)])
-        #         f.writelines(results[key])
-    
-    # print(results)
 
     return attack_params
 
@@ -558,7 +510,7 @@ if __name__ == "__main__":
     # attack_fun = projected_gradient_descent
     # attack_params = {'eps':0.001, 'eps_iter':0.0001, 'nb_iter':2000, 'norm':2}
     # save_path = attack(attack_fun, attack_params)
-    eval_attack('attacks/final_obfuscated_gradient_attack')
+    # eval_attack('attacks/final_obfuscated_gradient_attack')
 
 
     # attack_fun = carlini_wagner_l2
@@ -566,6 +518,12 @@ if __name__ == "__main__":
     # attack(attack_fun, attack_params)
     # eval_attack(save_path)
 
-    # attack_params = gridsearch()
-    # with open('attack_params.pkl', 'wb') as f:
-    #     pickle.dump(attack_params, f)
+    attack_params = gridsearch(5)
+    with open('attack_params.pkl', 'wb') as f:
+        pickle.dump(attack_params, f)
+
+    for a in attack_params:
+        for p in attack_params[a]:
+            param_str = a + '_' + '_'.join([str(p[k]) for k in sorted(list(p.keys()))])
+            print(param_str)
+            eval_attack('data/lfw-attack-5/'+param_str)
