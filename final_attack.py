@@ -113,14 +113,18 @@ def preprocess(img_paths, target_sizes=[(224, 224)],
 
 
 def main():
+    torch.cuda.empty_cache()
 
     custom = False
     # CUDA_LAUNCH_BLOCKING=1
-    batch_size = 10
+    batch_size = 1
+    total_count = 10
     # load data
     from data.datasets import load_lfw_test
 
     data_loader, dataset = load_lfw_test(batch_size)
+
+    idx_to_path = {idx : path for (path, idx) in dataset.imgs}
 
     # Instantiate model, loss, and optimizer for training
 
@@ -131,35 +135,46 @@ def main():
     
     # get save names
     test_dataset = os.path.join('data', 'lfw-test')
-    attack_paths = []
-    for subdir in os.listdir(test_dataset):
-        person_path = os.path.join(test_dataset, subdir)
-        if os.path.isdir(person_path):
-            for i, img_file in enumerate(os.listdir(person_path)):
-                img_path = os.path.join(person_path, img_file)
+    attack_paths = [None]*len(idx_to_path)
+    for i, p in idx_to_path.items():
+        n = os.path.split(os.path.split(p)[0])[-1]
+
+        attack_paths[i] = (
+            save_path, n, str(i)+'.png'
+        )
+
+    # for subdir in os.listdir(test_dataset):
+    #     person_path = os.path.join(test_dataset, subdir)
+    #     if os.path.isdir(person_path):
+    #         for i, img_file in enumerate(os.listdir(person_path)):
+    #             img_path = os.path.join(person_path, img_file)
                 
-                attack_paths.append(
-                    (
-                        save_path,
-                        subdir,
-                        str(i)+'.png'
-                    )
-                )
+    #             attack_paths.append(
+    #                 (
+    #                     save_path,
+    #                     subdir,
+    #                     str(i)+'.png'
+    #                 )
+    #             )
 
     # can use any torch model here
     from attacks.base_models.resnet50_torch import load_resnet_classifier, load_resnet_pretrained_yny, load_resnet_yny
     if custom:
         model = load_resnet_yny()
     else:
-        # model = load_resnet_classifier()
-        model = load_resnet_pretrained_yny()
+        model = load_resnet_classifier()
+        # model = load_resnet_pretrained_yny()
 
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     model = model.to(device=device)
 
     model.eval()
 
+    i = 0
     for x, y in data_loader:
+        i += 1
+        if i > total_count:
+            break
         # with torch.no_grad():
         #     x_path = original_paths[i:i+batch_size]
         #     # x = np.array([np.asarray(PIL.Image.open(xp), dtype=np.float32) for xp in x_path])
@@ -170,7 +185,6 @@ def main():
         #     x = np.array(x, dtype=np.float32)
         
         # x = torch.from_numpy(x)
-        print(x.shape)
         x = x.to(device)
 
         _, y_pred = model(x).max(1)  # model prediction on clean examples
@@ -181,7 +195,7 @@ def main():
         # x_fgm = fast_gradient_method(model, x, eps=0.1, norm=np.inf)
         # lower epx = more like original
         x_pgd = projected_gradient_descent(model, x, 
-            eps=0.05, eps_iter=0.0001, nb_iter=2000, norm=2
+            eps=0.1, eps_iter=0.01, nb_iter=500, norm=np.inf
         )
         # x_cwg = carlini_wagner_l2(model, x, nc)
 
@@ -213,23 +227,22 @@ def main():
         #     # torchvision.utils.save_image(x_cwg[i], save_path + "cwg_"+str(i)+".png")
         
         # do only one batch
-        break
 
-    print(
-        "test acc on clean examples (%): {:.3f}".format(
-            report['correct'] / report['nb_test'] * 100.0
-        )
-    )
-    print(
-        "test acc on FGM adversarial examples (%): {:.3f}".format(
-            report['correct_fgm'] / report['nb_test'] * 100.0
-        )
-    )
     # print(
-    #     "test acc on PGD adversarial examples (%): {:.3f}".format(
-    #         report['correct_pgd'] / report['nb_test'] * 100.0
+    #     "test acc on clean examples (%): {:.3f}".format(
+    #         report['correct'] / report['nb_test'] * 100.0
     #     )
     # )
+    # print(
+    #     "test acc on FGM adversarial examples (%): {:.3f}".format(
+    #         report['correct_fgm'] / report['nb_test'] * 100.0
+    #     )
+    # )
+    print(
+        "test acc on PGD adversarial examples (%): {:.3f}".format(
+            report['correct_pgd'] / report['nb_test'] * 100.0
+        )
+    )
     # print(
     #     "test acc on CWG adversarial examples (%): {:.3f}".format(
     #         report['correct_cwg'] / report['nb_test'] * 100.0
