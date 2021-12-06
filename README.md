@@ -61,11 +61,29 @@ y' = val_model(x')
 
 ### results
 
-Jack
+Accuracy of a seperate model (Test: VGG, Val: FaceNet) on the attack images. Lower indicates a better attack.
+
+All attacks were run over a hyper-parameter grid with a cross-validation fold of 10 images, then the best performing hyperparameter set was used to compute performance using the entire validation set.
+
+In all cases, a VGG-based model was used as the proxy model.
+
+Two targeted vector attacks hyper-parameter sets were chosen to demonstrate the trade-off between image quality and performance
+
+Attack | VGG Performance  | FaceNet Performance | Sample Image
+-------|------------------|---------------------|-------------
+No-box              | 13% | 24% | ![](ref_img/no_box_example.png)
+Untargeted Vector   | 21% | 62% | ![](ref_img/untargeted_vector.png)
+Targeted Vector 1   | 0%  | 0%  | ![](ref_img/vector_high_acc_attack.png)
+Targeted Vector 2   | 23% | 31% | ![](ref_img/vector_low_acc_attack.png)
+Untargeted Classifier | 9% | 21% | ![](ref_img/untargeted_classifier.png)
 
 ### Use Case / comparison with other algorithms
 
 Jake
+
+### Future Work
+
+Jack (talk about the yny classifier / easier training / possibilities with better vectors / lower training cost with the no-box attack)
 
 ### conclusions
 

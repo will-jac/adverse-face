@@ -29,7 +29,7 @@ FLAGS = flags.FLAGS
 
 def main(_):
 
-    custom = True
+    custom = False
     # CUDA_LAUNCH_BLOCKING=1
     batch_size = 10
     # load data
@@ -92,7 +92,7 @@ def main(_):
         
         torchvision.utils.save_image(x, save_path + "original.png")
         torchvision.utils.save_image(x_fgm, save_path + "fgsm.png")
-        # torchvision.utils.save_image(x_pgd, save_path + "pgd.png")
+        torchvision.utils.save_image(x_pgd, save_path + "pgd.png")
         # torchvision.utils.save_image(x_cwg, save_path + "cwg.png")
         for i in range(batch_size):
             torchvision.utils.save_image(x[i], save_path + "original_"+str(i)+".png")
