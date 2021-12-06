@@ -23,9 +23,9 @@ import shutil
 
 custom = False
 
-batch_size = 10
+batch_size = 20
 start = 0
-end = 10
+end = 50
 # start_at = int(sys.argv[1])
 # total_count = 10
 
@@ -67,11 +67,11 @@ def attack(params, surrogate_acc=False):
 
     i = start
     for idx, (x, y) in enumerate(data_loader):
-        for j in range(batch_size):
-            idx_to_path[idx*batch_size + j] = class_idx_to_path[y[j].detach().item()]
-
-        if idx < i:
+        if idx*batch_size < i:
             continue
+
+        for j in range(batch_size):
+            idx_to_path[i + j] = class_idx_to_path[y[j].detach().item()]
 
         print(torch.cuda.memory_allocated())
         
@@ -88,7 +88,7 @@ def attack(params, surrogate_acc=False):
             for j in range(batch_size):
                 torchvision.utils.save_image(
                     x_pgd[j], 
-                    attack_path + '_'+str(i+j)+'.png'
+                    attack_path + str(i+j)+'.png'
                 )
                 # torchvision.utils.save_image(x_pgd[j], attack_paths[i+j])
 
@@ -115,17 +115,17 @@ def attack(params, surrogate_acc=False):
     for i in range(start, end):
         p = idx_to_path[i]
         n = os.path.split(os.path.split(p)[0])[-1]
-
         ap = os.path.join(save_path, n)
         os.makedirs(ap, exist_ok=True)
         
-        attack_paths[i] = os.path.join(ap,str(i)+'.png')
-    print(attack_paths[i])
+        attack_paths[i-start] = os.path.join(ap,str(i)+'.png')
+
+    print(attack_paths[i-start])
 
     for i in range(start, end):
         shutil.move(
-            attack_path + '_'+str(i)+'.png', 
-            attack_paths[i] + '_'+str(i)+'.png'
+            attack_path + str(i)+'.png', 
+            attack_paths[i-start]
         )
 
     if surrogate_acc:
@@ -141,18 +141,23 @@ from deepface_surrogate_attack import eval_attack
 
 if __name__ == "__main__":
 
-    from sklearn.model_selection import ParameterGrid
+    # from sklearn.model_selection import ParameterGrid
 
-    param_grid = ParameterGrid(
-        {
-            'eps' : [1e-3,1e-2,1e-1],
-            'eps_iter' : [1e-2,1e-1],
-            'norm' : [np.inf],
-            'nb_iter' : [500],
-            'sanity_checks' : [False]
-        }
-    )
-    for i, params in enumerate(param_grid):
-        print('%02d/%d'%(i,len(param_grid)), params)
-        save_path = attack(params)
-        eval_attack(save_path)
+    # param_grid = ParameterGrid(
+    #     {
+    #         'eps' : [1e-3,1e-2,1e-1],
+    #         'eps_iter' : [1e-2,1e-1],
+    #         'norm' : [np.inf],
+    #         'nb_iter' : [500],
+    #         'sanity_checks' : [False]
+    #     }
+    # )
+    # for i, params in enumerate(param_grid):
+    #     print('%02d/%d'%(i,len(param_grid)), params)
+    #     save_path = attack(params)
+    #     eval_attack(save_path)
+
+    save_path = attack({
+        'eps': 0.09, 'eps_iter':0.005, 'nb_iter':1000, 'norm':np.inf, 'sanity_checks':False
+    })
+    eval_attack(save_path)

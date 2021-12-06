@@ -75,7 +75,8 @@ No-box              | 13% | 24% | ![](ref_img/no_box_example.png)
 Untargeted Vector   | 21% | 62% | ![](ref_img/untargeted_vector.png)
 Targeted Vector 1   | 0%  | 0%  | ![](ref_img/vector_high_acc_attack.png)
 Targeted Vector 2   | 23% | 31% | ![](ref_img/vector_low_acc_attack.png)
-Untargeted Classifier | 9% | 21% | ![](ref_img/untargeted_classifier.png)
+Untargeted Classifier Max Performance | 9% | 21% | 
+Untargeted Classifier Best Trade-off | 29% | 42% | 
 
 ### Use Case / comparison with other algorithms
 
