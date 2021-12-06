@@ -76,7 +76,11 @@ Untargeted Vector   | 21% | 62% | ![](ref_img/untargeted_vector.png)
 Targeted Vector 1   | 0%  | 0%  | ![](ref_img/vector_high_acc_attack.png)
 Targeted Vector 2   | 23% | 31% | ![](ref_img/vector_low_acc_attack.png)
 Untargeted Classifier Max Performance | 9% | 21% | 
-Untargeted Classifier Best Trade-off | 29% | 42% | 
+Untargeted Classifier Best Trade-off | 29% | 34% | 
+
+max performance: epsilon 0.1, acc 0.09 0.21
+trade-off: epsilon 0.08, acc 0.29 0.34
+quality: epsilon 0.05, acc 0.49 0.52
 
 ### Use Case / comparison with other algorithms
 
